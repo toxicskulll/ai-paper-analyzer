@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+python-multipart
+jinja2
+weasyprint
+PyMuPDF
+openai==0.28
+python-dotenv
+reportlab
+transformers
+tqdm
+streamlit
+pandas
+fpdf
+python-docx
+st-aggrid
+tiktoken
