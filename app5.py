@@ -3,8 +3,9 @@ import time
 import streamlit as st
 import pandas as pd
 import fitz  # PyMuPDF
-import subprocess
 from docx import Document
+from fpdf import FPDF
+import subprocess
 from st_aggrid import AgGrid
 from st_aggrid.grid_options_builder import GridOptionsBuilder
 import tiktoken  # Tokenizer for chunking
@@ -22,13 +23,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import BytesIO
 import markdown2
 import re
-from pdf_integration import pdf_export_ui, comparison_pdf_export_ui
-from st_aggrid import AgGrid, GridOptionsBuilder
-import threading
-import traceback
-import sys
-import spacy
-import json
 
 # ------------------- Configuration -------------------
 EXTRACTED_DIR = "extracted_data"
@@ -47,7 +41,7 @@ logging.basicConfig(filename=LOG_FILE, level=logging.DEBUG,
 OLLAMA_PATH = r"C:\\Users\\aadis\\AppData\\Local\\Programs\\Ollama\\ollama.exe"
 MODEL_NAME = "mistral"
 
-MAX_TOKENS_PER_CHUNK = 1024  # Adjusted for Mistral model
+MAX_TOKENS_PER_CHUNK = 200
 SUMMARY_RETRIES = 3
 RETRY_DELAY_SECONDS = 2
 
@@ -132,16 +126,6 @@ with st.sidebar:
         index=0,
         key="summary_style_dropdown"
     )
-    st.markdown("---")
-
-    st.markdown("**🧮 Max Tokens per Chunk**")
-    MAX_TOKENS_PER_CHUNK = st.slider(
-    "⚠️ Larger chunks take more memory & time", 
-    min_value=256, max_value=4096, step=128, 
-    value=1024,
-    help="Controls how much text (in tokens) is sent to the model per chunk. Default is 1024."
-    )
-
     
     # Advanced options
     with st.expander("🔧 Advanced Settings"):
@@ -151,6 +135,7 @@ with st.sidebar:
         show_realtime = st.checkbox("⏱️ Show Real-time Processing", value=True)
         
         keyword_count = st.slider("Number of keywords to extract", 5, 30, 15)
+        chunk_display_mode = st.radio("Chunk display mode", ["Grid View", "Expandable Cards"], index=0)
     
     # Comparison settings (only show when comparative analysis is selected)
     if processing_mode == "Comparative Analysis":
@@ -163,25 +148,17 @@ with st.sidebar:
 
 # ------------------- Enhanced Helper Functions -------------------
 
-import streamlit as st
-import time
-from streamlit.runtime.scriptrunner import add_script_run_ctx
-from threading import Thread
-import queue
-
 class RealTimeLogger:
-    def __init__(self, max_logs=1000):
+    """Enhanced real-time logging with Streamlit integration"""
+    def __init__(self):
         self.logs = []
-        self.log_queue = queue.Queue()
-        self.max_logs = max_logs
         self.start_time = None
         self.step_times = {}
-        self.update_thread = None
-
+    
     def start_process(self, process_name: str):
         self.start_time = time.time()
         self.log_step("🚀 Starting Process", process_name)
-
+    
     def log_step(self, step_name: str, details: str = ""):
         current_time = time.time()
         if self.start_time:
@@ -190,133 +167,70 @@ class RealTimeLogger:
             timestamp = f"[{elapsed:.2f}s]"
         else:
             timestamp = f"[{datetime.now().strftime('%H:%M:%S')}]"
-
+        
         log_entry = f"{timestamp} {step_name}"
         if details:
             log_entry += f": {details}"
-
-        if len(self.logs) >= self.max_logs:
-            self.logs.pop(0)
+        
         self.logs.append(log_entry)
-        self.log_queue.put(log_entry)
         logging.info(log_entry)
+    
+    def get_elapsed_time(self) -> float:
+        if self.start_time:
+            return time.time() - self.start_time
+        return 0
+    
+    def display_logs(self, container):
+        if self.logs:
+            log_text = "\n".join(self.logs)
+            container.code(log_text, language="log")
 
-    def display_logs(self, container, typing_speed=0.04, cursor_blink_interval=0.5):
-        placeholder = container.empty()
-
-        def stream_logs():
-            displayed_lines = []  # list of all full lines logged so far
-            current_line = ""
-            cursor_visible = True
-            last_update_time = time.time()
-
-            while True:
-                try:
-                    new_log = self.log_queue.get_nowait()
-
-                    # Typewriter animate new log on a new line
-                    if current_line:
-                        displayed_lines.append(current_line)  # save previous line
-                    current_line = ""
-
-                    for char in new_log:
-                        current_line += char
-                        # Join all previous lines + current typing line + blinking cursor
-                        full_text = "\n".join(displayed_lines + [current_line + ("▐" if cursor_visible else " ")])
-                        placeholder.code(full_text, language="log")
-                        time.sleep(typing_speed)
-                    # After typing is done, keep current_line complete with cursor
-                    last_update_time = time.time()
-
-                except queue.Empty:
-                    # No new logs, blink cursor only on current line end
-                    if time.time() - last_update_time >= cursor_blink_interval:
-                        cursor_visible = not cursor_visible
-                        full_text = "\n".join(displayed_lines + [current_line + ("▐" if cursor_visible else " ")])
-                        placeholder.code(full_text, language="log")
-                        last_update_time = time.time()
-                    time.sleep(0.1)
-
-        if not self.update_thread or not self.update_thread.is_alive():
-            self.update_thread = Thread(target=stream_logs, daemon=True)
-            add_script_run_ctx(self.update_thread)
-            self.update_thread.start()
-
-nlp = spacy.load("en_core_web_sm")
-
-def extract_paper_metadata(file_path: str) -> dict:
+def extract_paper_metadata(text: str) -> dict:
+    """Enhanced metadata extraction including title, authors, abstract"""
     metadata = {
         "title": "",
         "authors": [],
+        "abstract": "",
         "publication_year": "",
-        "abstract": ""
+        "keywords": [],
+        "sections_detected": []
     }
-
-    ext = file_path.split(".")[-1].lower()
-
-    try:
-        if ext == "pdf":
-            # ---- 1. Open PDF and use bounding box to extract title ----
-            doc = fitz.open(file_path)
-            first_page = doc.load_page(0)
-            blocks = first_page.get_text("dict")["blocks"]
-
-            largest_font = 0
-            title_text = ""
-            for block in blocks:
-                for line in block.get("lines", []):
-                    for span in line.get("spans", []):
-                        if span.get("size", 0) > largest_font and len(span.get("text", "")) > 10:
-                            largest_font = span["size"]
-                            title_text = span["text"]
-
-            metadata["title"] = title_text.strip()
-
-            # ---- 2. Get full text for NER ----
-            full_text = first_page.get_text()
-            doc_spacy = nlp(full_text)
-            authors = list({ent.text.strip() for ent in doc_spacy.ents if ent.label_ == "PERSON"})
-            metadata["authors"] = authors
-
-            # ---- 3. Extract year ----
-            year_match = re.search(r"\b(19|20)\d{2}\b", full_text)
-            if year_match:
-                metadata["publication_year"] = year_match.group(0)
-
-            # ---- 4. Extract abstract (if available) ----
-            abstract_match = re.search(r"(abstract|summary)\s*[:\-]?\s*(.+?)(?=\n[A-Z])", full_text, re.IGNORECASE | re.DOTALL)
-            if abstract_match:
-                metadata["abstract"] = abstract_match.group(2).strip()
-
-        else:
-            # ---- Fallback for DOCX, TXT ----
-            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                text = f.read()
-
-            lines = [line.strip() for line in text.split('\n') if line.strip()]
-            first_lines = lines[:80]
-
-            # Title heuristic
-            for line in first_lines:
-                if 6 <= len(line.split()) <= 20 and not re.search(r"http|doi|license|abstract|introduction", line.lower()):
-                    metadata["title"] = line.strip()
-                    break
-
-            doc_spacy = nlp("\n".join(first_lines))
-            authors = list({ent.text.strip() for ent in doc_spacy.ents if ent.label_ == "PERSON"})
-            metadata["authors"] = authors
-
-            year_match = re.search(r"\b(19|20)\d{2}\b", text)
-            if year_match:
-                metadata["publication_year"] = year_match.group(0)
-
-            abstract_match = re.search(r"(abstract|summary)\s*[:\-]?\s*(.+?)(?=\n[A-Z])", text, re.IGNORECASE | re.DOTALL)
-            if abstract_match:
-                metadata["abstract"] = abstract_match.group(2).strip()
-
-    except Exception as e:
-        print(f"[ERROR] Metadata extraction failed: {e}")
-
+    
+    lines = text.split('\n')[:50]  # Check first 50 lines for metadata
+    text_lower = text.lower()
+    
+    # Extract title (usually first meaningful line)
+    for line in lines:
+        line = line.strip()
+        if len(line) > 10 and not line.lower().startswith(('abstract', 'introduction')):
+            if not re.match(r'^\d+', line):  # Skip lines starting with numbers
+                metadata["title"] = line
+                break
+    
+    # Extract authors (look for common patterns)
+    author_patterns = [
+        r'(?:author[s]?[:]*\s*)(.*)',
+        r'(?:by\s+)(.*?)(?:\n|$)',
+        r'([A-Z][a-z]+\s+[A-Z][a-z]+(?:\s*,\s*[A-Z][a-z]+\s+[A-Z][a-z]+)*)'
+    ]
+    
+    for pattern in author_patterns:
+        matches = re.findall(pattern, text[:1000], re.IGNORECASE | re.MULTILINE)
+        if matches:
+            authors_text = matches[0].strip()
+            metadata["authors"] = [author.strip() for author in re.split(r'[,;&]', authors_text)]
+            break
+    
+    # Extract abstract
+    abstract_match = re.search(r'abstract[:\s]*\n?(.*?)(?:\n\s*\n|\nintroduction|\nkeywords)', text_lower, re.DOTALL | re.IGNORECASE)
+    if abstract_match:
+        metadata["abstract"] = abstract_match.group(1).strip()[:500]  # Limit abstract length
+    
+    # Extract publication year
+    year_matches = re.findall(r'\b(20\d{2}|19\d{2})\b', text[:1000])
+    if year_matches:
+        metadata["publication_year"] = year_matches[0]
+    
     return metadata
 
 def enhanced_chunk_text(text: str, max_tokens: int = MAX_TOKENS_PER_CHUNK) -> List[dict]:
@@ -441,7 +355,7 @@ You must strictly analyze only the following content. Do not add anything not pr
 CONTENT TO ANALYZE:
 {text}""",
 
-        "bullet-point": f"""{context_info}Analyze the provided content and produce a structured, factual bullet-point summary using the following format. Start each point in a new line. Do not include interpretations or assumptions:
+        "bullet-point": f"""{context_info}Analyze the provided content and produce a structured, factual bullet-point summary using the following format. Do not include interpretations or assumptions:
 
 • **Problem Statement**: Clearly state the research problem being addressed.  
 • **Methodology**: Summarize the specific methods or approaches used in the work.  
@@ -546,37 +460,6 @@ def extract_keywords(text: str, top_n: int = 10) -> list[str]:
     except Exception as e:
         logging.exception(f"Keyword extraction failed: {e}")
         return []
-    
-def extract_structured_fields(summary: str) -> dict:
-    """Extract specific fields from the AI-generated summary"""
-    fields = {
-        "dataset": "",
-        "modality": "",
-        "methodology": "",
-        "metrics": "",
-        "results": "",
-        "contributions": "",
-        "limitations": "",
-        "future_scope": ""
-    }
-
-    patterns = {
-        "dataset": r"(?:dataset[s]? used|dataset[s]?|data used):?\s*(.*?)(?:\n|$)",
-        "modality": r"(?:modality|data type|scan type):?\s*(.*?)(?:\n|$)",
-        "methodology": r"(?:methodology|approach|technique[s]?):?\s*(.*?)(?:\n|$)",
-        "metrics": r"(?:evaluation metrics|metrics used|measured by):?\s*(.*?)(?:\n|$)",
-        "results": r"(?:result[s]?|findings):?\s*(.*?)(?:\n|$)",
-        "contributions": r"(?:contribution[s]?|novelty):?\s*(.*?)(?:\n|$)",
-        "limitations": r"(?:limitation[s]?|weaknesses):?\s*(.*?)(?:\n|$)",
-        "future_scope": r"(?:future work|future scope|next steps):?\s*(.*?)(?:\n|$)"
-    }
-
-    for key, pattern in patterns.items():
-        match = re.search(pattern, summary, re.IGNORECASE)
-        if match:
-            fields[key] = match.group(1).strip()
-
-    return fields
 
 def generate_comparison_report(papers_data: List[dict]) -> dict:
     """Generate comprehensive comparison report"""
@@ -609,130 +492,173 @@ def generate_comparison_report(papers_data: List[dict]) -> dict:
     
     return comparison
 
-def gpt_extract_fields(summary_text: str, model: str = MODEL_NAME) -> dict:
-    """Use GPT (via Ollama) to extract structured fields from a paper summary."""
-    prompt = f"""
-You are a smart research paper extractor. Analyze the following research paper summary and extract the key fields. 
-Return ONLY a Python dictionary in this format:
+export_formatted = st.toggle("🎨 Export Fancy Formatted PDF", value=True)
+class StyledPDF(FPDF):
+    def __init__(self):
+        super().__init__()
+        self.set_auto_page_break(auto=True, margin=15)
 
-{{
-  "dataset": "...",
-  "modality": "...",
-  "methodology": "...",
-  "metrics": "...",
-  "results": "...",
-  "contributions": "...",
-  "limitations": "...",
-  "future_scope": "..."
-}}
+    def header(self):
+        if self.page_no() > 1:
+            self.set_font('Arial', 'I', 8)
+            self.set_text_color(128, 128, 128)
+            self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+            self.ln(20)
 
-Be specific and concise. Avoid vague text like 'this paper' or 'the authors'. If a field is not mentioned, write "N/A".
-
-SUMMARY:
-{summary_text}
-"""
-
-    try:
-        result = subprocess.run(
-            [OLLAMA_PATH, "run", model],
-            input=prompt.encode("utf-8"),
-            capture_output=True,
-            timeout=90,
-            check=False
-        )
-        output = result.stdout.decode("utf-8", errors="replace").strip()
-
-        # Try to extract a Python dict from model output
-        match = re.search(r"\{.*?\}", output, re.DOTALL)
-        if match:
-            extracted_json = match.group(0)
-            return json.loads(extracted_json)
-        else:
-            return {key: "N/A" for key in [
-                "dataset", "modality", "methodology", "metrics", "results", "contributions", "limitations", "future_scope"
-            ]}
-    except Exception as e:
-        logging.error(f"Field extraction failed: {e}")
-        return {key: "N/A" for key in [
-            "dataset", "modality", "methodology", "metrics", "results", "contributions", "limitations", "future_scope"
-        ]}
-
-def generate_literature_survey_with_table(papers_data: List[dict], depth="comprehensive") -> str:
-    """Generate a markdown table + unified comparative summary of all papers"""
-    # Generate table headers
-    headers = [
-        "Author (Year)", "Dataset", "Modality", "Method", 
-        "Metrics", "Results", "Contribution", "Limitations"
-    ]
-    table_md = "| " + " | ".join(headers) + " |\n"
-    table_md += "| " + " | ".join(["---"] * len(headers)) + " |\n"
-
-    for paper in papers_data:
-        title = paper.get("title", "Untitled")
-        year = paper.get("publication_year", "n.d.")
-        authors = ", ".join(paper.get("authors", [])) or "Unknown"
-        dataset = paper.get("dataset", "N/A")
-        modality = paper.get("modality", "N/A")
-        method = paper.get("methodology", "N/A")
-        metrics = paper.get("metrics", "N/A")
-        results = paper.get("results", "N/A")
-        contrib = paper.get("contributions", "N/A")
-        limits = paper.get("limitations", "N/A")
-
-        row = f"{authors} ({year}) | {dataset} | {modality} | {method} | {metrics} | {results} | {contrib} | {limits}"
-        table_md += f"| {row} |\n"
-
-    # Now generate the narrative summary
-    summary_text = generate_combined_comparative_summary(papers_data, depth)
-
-    final_output = f"### 📊 Comparative Table\n\n```\n{table_md}\n```\n\n---\n\n### 📝 Literature Summary\n{summary_text}"
-    return final_output
-
-def generate_combined_comparative_summary(papers_data: List[dict], depth="comprehensive") -> str:
-    """Create a unified, thesis-grade literature review using only paper titles for references"""
-    summaries = [paper["summary"] for paper in papers_data]
-    titles = [paper["title"] for paper in papers_data]
-    years = [paper["publication_year"] for paper in papers_data]
-    keywords = [paper["keywords"] for paper in papers_data]
-
-    combined_prompt = f"""
-You are a skilled academic researcher writing the **Related Work** section of a master's thesis or research paper. You are given structured summaries of multiple existing papers.
-
-🎯 Your job is to write a **unified and critical literature review**, **only referring to papers by their titles**. Do NOT use "this study", author names, or generic phrases like "the paper". Always refer to each paper like: *"The paper titled XYZ explores..."*.
-
-You must compare, contrast, and synthesize the following aspects:
-- 🎯 Research Objectives
-- 🧠 Methodologies
-- 📊 Results & Metrics
-- 💡 Key Contributions
-- ⚠️ Limitations
-- 🔮 Future Scope
-
-📁 The papers are:
-
-{"\n\n".join([f"📄 Title: {t}\n🗓 Year: {y}\n🔑 Keywords: {', '.join(k)}\n📝 Summary:\n{s}" for t, y, k, s in zip(titles, years, keywords, summaries)])}
-
----
-
-🧠 **Write a polished, structured Related Work section** that:
-- Follows an academic tone
-- Groups papers by similarity
-- Highlights differences sharply
-- Refers to each paper by title only (no "the authors", no "this study")
-
-Output in Markdown. Avoid repetition. Use section headers if useful.
-
-Now begin.
-"""
-    return enhanced_summarize_text(combined_prompt, style=depth)
-
-# ------------------- PDF Generation Integration -------------------
-# Professional PDF generation
-from pdf_generator import pdf_generator
+    def footer(self):
+        self.set_y(-15)
+        self.set_font('Arial', 'I', 8)
+        self.set_text_color(128, 128, 128)
+        self.cell(0, 10, f'Generated by AI Research Paper Analyzer - Page {self.page_no()}', 0, 0, 'C')
+        #claudetpps
 
 def create_pdf(summary_text, formatted=True, metadata=None):
-    """Create a professional conference-style PDF with proper formatting."""
-    return pdf_generator.create_pdf(summary_text, metadata=metadata)
+    """Create a structured, searchable PDF with TOC, preview, and markdown-style formatting."""
+    try:
+        pdf = StyledPDF()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        section_links = []
+
+        # Cover Page
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 20)
+        pdf.set_text_color(0, 102, 204)
+        pdf.cell(0, 20, "🧠 AI-Powered Research Summary", ln=True, align='C')
+        pdf.ln(10)
+
+        # Metadata (Preview Mode)
+        pdf.set_font('Arial', 'B', 14)
+        pdf.set_text_color(0, 0, 0)
+        title = metadata.get("title", "").strip() or "Untitled Research Paper"
+        authors_list = metadata.get("authors", [])
+        authors = ", ".join(authors_list[:3]) if isinstance(authors_list, list) else str(authors_list)
+        year = metadata.get("publication_year", "Unknown")
+
+        # Encode safely for PDF
+        title = title.encode('latin-1', 'ignore').decode('latin-1')
+        authors = authors.encode('latin-1', 'ignore').decode('latin-1')
+
+        pdf.cell(0, 10, f"📌 Title: {title}", ln=True)
+        pdf.cell(0, 10, f"👥 Authors: {authors or 'Unknown'}", ln=True)
+        pdf.cell(0, 10, f"📅 Year: {year}", ln=True)
+        pdf.ln(5)
+
+        # Abstract & Keywords preview (if included in metadata)
+        if "abstract" in metadata:
+            pdf.set_font('Arial', 'B', 12)
+            pdf.cell(0, 10, "📝 Abstract", ln=True)
+            pdf.set_font('Arial', '', 12)
+            pdf.multi_cell(0, 8, metadata['abstract'].strip())
+            pdf.ln(3)
+
+        if "keywords" in metadata and metadata["keywords"]:
+            keywords = ", ".join(metadata["keywords"][:10])
+            pdf.set_font('Arial', 'B', 12)
+            pdf.cell(0, 10, "🔑 Keywords", ln=True)
+            pdf.set_font('Arial', '', 12)
+            pdf.multi_cell(0, 8, keywords)
+            pdf.ln(5)
+
+        # Table of Contents placeholder
+        toc_page = pdf.page_no() + 1
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 16)
+        pdf.cell(0, 10, "📚 Table of Contents", ln=True)
+        pdf.ln(5)
+        toc_entries = []
+
+        # Main Summary Page
+        pdf.add_page()
+        pdf.set_font('Arial', '', 12)
+        pdf.set_text_color(0, 0, 0)
+
+        if summary_text:
+            clean_summary = summary_text.encode('latin-1', 'ignore').decode('latin-1')
+            paragraphs = clean_summary.split('\n\n')
+            current_section_title = None
+
+            for paragraph in paragraphs:
+                paragraph = paragraph.strip()
+                if not paragraph:
+                    continue
+
+                if paragraph.startswith('##'):
+                    header_text = paragraph.replace('##', '').strip()
+                    link = pdf.add_link()
+                    pdf.set_link(link, y=pdf.get_y(), page=pdf.page_no())
+                    section_links.append((header_text, link, pdf.page_no()))
+
+                    pdf.set_font('Arial', 'B', 14)
+                    pdf.cell(0, 10, f"🔹 {header_text}", ln=True)
+                    pdf.ln(2)
+                    pdf.set_font('Arial', '', 12)
+                    current_section_title = header_text
+
+                elif paragraph.startswith('#'):
+                    header_text = paragraph.replace('#', '').strip()
+                    link = pdf.add_link()
+                    pdf.set_link(link, y=pdf.get_y(), page=pdf.page_no())
+                    section_links.append((header_text, link, pdf.page_no()))
+
+                    pdf.set_font('Arial', 'B', 16)
+                    pdf.cell(0, 10, f"🔷 {header_text}", ln=True)
+                    pdf.ln(2)
+                    pdf.set_font('Arial', '', 12)
+                    current_section_title = header_text
+
+                else:
+                    # Basic Markdown-style inline formatting
+                    paragraph = paragraph.replace("**", "").replace("*", "")
+                    paragraph = paragraph.replace("- ", "• ")
+
+                    # Smart paragraph breaking
+                    if len(paragraph) > 1000:
+                        sentences = paragraph.split('. ')
+                        chunk = ""
+                        for sentence in sentences:
+                            if len(chunk + sentence) < 800:
+                                chunk += sentence + ". "
+                            else:
+                                pdf.multi_cell(0, 8, chunk.strip())
+                                pdf.ln(2)
+                                chunk = sentence + ". "
+                        if chunk:
+                            pdf.multi_cell(0, 8, chunk.strip())
+                            pdf.ln(2)
+                    else:
+                        pdf.multi_cell(0, 8, paragraph)
+                        pdf.ln(2)
+
+        # Go back to TOC and populate
+        pdf.page = toc_page
+        pdf.set_font('Arial', '', 12)
+        for title, link, page in section_links:
+            toc_entry = f"{title} ...... {page}"
+            pdf.cell(0, 10, toc_entry, ln=True, link=link)
+
+        # Finalize PDF
+        pdf_buffer = BytesIO()
+        raw_output = pdf.output(dest='S')
+        pdf_output = raw_output.encode('latin-1') if isinstance(raw_output, str) else raw_output
+        pdf_buffer.write(pdf_output)
+        pdf_buffer.seek(0)
+        return pdf_buffer.getvalue()
+
+    except Exception as e:
+        logging.error(f"PDF creation failed: {e}")
+        fallback_pdf = FPDF()
+        fallback_pdf.add_page()
+        fallback_pdf.set_font('Arial', 'B', 16)
+        fallback_pdf.cell(0, 10, 'Error Creating PDF', ln=True, align='C')
+        fallback_pdf.ln(10)
+        fallback_pdf.set_font('Arial', '', 12)
+        fallback_pdf.multi_cell(0, 10, f'PDF generation failed: {str(e)}')
+
+        fallback_buffer = BytesIO()
+        fallback_output = fallback_pdf.output(dest='S').encode('latin-1')
+        fallback_buffer.write(fallback_output)
+        fallback_buffer.seek(0)
+        return fallback_buffer.getvalue()
 
 
 def create_comparison_visualization(papers_data: List[dict]):
@@ -791,19 +717,6 @@ with upload_col2:
         for file in uploaded_files:
             st.markdown(f"• {file.name} ({file.size/1024:.1f} KB)")
 
-# Precompute total chunks for progress tracking
-total_chunks_all = 0
-for f in uploaded_files:
-    raw = extract_text_from_file(os.path.join(EXTRACTED_DIR, f.name))
-    cleaned = clean_text(raw)
-    chunks = enhanced_chunk_text(cleaned)
-    total_chunks_all += len(chunks)
-
-if "chunk_times" not in st.session_state:
-    st.session_state.chunk_times = []
-
-processed_chunk_count = 0
-
 # Processing section
 if uploaded_files:
     # Initialize session state for storing results
@@ -813,7 +726,7 @@ if uploaded_files:
     # Process files button
     if st.button("🚀 Start Analysis", type="primary"):
         st.session_state.papers_data = []  # Reset previous results
-
+        
         # Real-time processing section
         if show_realtime:
             realtime_container = st.container()
@@ -835,7 +748,6 @@ if uploaded_files:
         logger.start_process("Multi-Paper Analysis")
         
         # Process each file
-        global_start_time = time.time()
         for file_idx, uploaded_file in enumerate(uploaded_files):
             filename = uploaded_file.name
             logger.log_step(f"📄 Processing File {file_idx + 1}/{len(uploaded_files)}", filename)
@@ -884,78 +796,27 @@ if uploaded_files:
             chunk_start_time = time.time()
             
             for i, chunk in enumerate(chunks):
-                chunk_start_time = time.time()
-                logger.log_step("🔄 Processing Chunk", f"File {file_idx + 1}, Chunk {i + 1}/{len(chunks)}")
-
-                # === Your chunk processing code here ===
-                # e.g. summary = enhanced_summarize_text(chunk)
-                # For demo, let's simulate some work with time.sleep(0.1)
-                time.sleep(0.1)
-                # =======================================
-
-                processed_chunk_count += 1
-                progress_percent = (processed_chunk_count / total_chunks_all) * 100
-                elapsed_total = time.time() - logger.start_time
-
-                with stats_placeholder.container():
-                    st.markdown(f"""
-                    <style>
-                    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
-
-                    .neo-terminal {{
-                        background: rgba(17, 24, 39, 0.85);
-                        padding: 1.6rem;
-                        border-radius: 14px;
-                        font-family: 'JetBrains Mono', monospace;
-                        font-size: 0.95rem;
-                        color: #D1FAE5;
-                        line-height: 1.9;
-                        box-shadow: 0 0 12px rgba(0, 255, 150, 0.2);
-                        border: 1px solid rgba(0, 255, 150, 0.15);
-                        backdrop-filter: blur(6px);
-                        position: relative;
-                    }}
-
-                    .neo-terminal .label {{
-                        color: #7DD3FC;
-                        font-weight: 600;
-                    }}
-
-                    .animated-progress {{
-                        font-family: 'JetBrains Mono', monospace;
-                        font-size: 2.6rem;
-                        font-weight: 700;
-                        text-align: center;
-                        margin-top: 1.2rem;
-                        background: linear-gradient(90deg, #60A5FA, #8B5CF6, #EC4899);
-                        -webkit-background-clip: text;
-                        -webkit-text-fill-color: transparent;
-                        animation: pulseGlow 3s ease-in-out infinite;
-                    }}
-
-                    @keyframes pulseGlow {{
-                        0% {{ text-shadow: 0 0 4px #60A5FA; }}
-                        50% {{ text-shadow: 0 0 12px #EC4899; }}
-                        100% {{ text-shadow: 0 0 4px #60A5FA; }}
-                    }}
-                    </style>
-
-                    <div class="neo-terminal">
-                        > <span class="label">Total Time</span>: {elapsed_total:.1f}s<br>
-                        > <span class="label">File</span>: {file_idx + 1}/{len(uploaded_files)}<br>
-                        > <span class="label">Chunk</span>: {i + 1}/{len(chunks)}
-                    </div>
-
-                    <div class="animated-progress">
-                        {progress_percent:.1f}%
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    logger.display_logs(log_placeholder)
-
-
-                # Summarize chunk
                 chunk_timer_start = time.time()
+                logger.log_step(f"🔄 Processing chunk {i+1}/{len(chunks)}")
+                
+                # Update real-time display
+                if show_realtime:
+                    elapsed_total = logger.get_elapsed_time()
+                    with timer_placeholder.container():
+                        st.markdown(f"""
+                        <div class="timer-display">
+                        ⏱️ Total Time: {elapsed_total:.1f}s<br>
+                        📄 File: {file_idx + 1}/{len(uploaded_files)}<br>
+                        🧩 Chunk: {i + 1}/{len(chunks)}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with stats_placeholder.container():
+                        st.metric("Processing Progress", f"{((file_idx * len(chunks) + i + 1) / (len(uploaded_files) * sum(len(enhanced_chunk_text(clean_text(extract_text_from_file(os.path.join(EXTRACTED_DIR, f.name))))) for f in uploaded_files))) * 100:.1f}%")
+                    
+                    logger.display_logs(log_placeholder)
+                
+                # Summarize chunk
                 summary = enhanced_summarize_text(
                     chunk["text"], 
                     style=depth, 
@@ -992,7 +853,6 @@ if uploaded_files:
             if not final_summary:
                 final_summary = "\n\n".join(partial_summaries)
             
-            structured_fields = gpt_extract_fields(final_summary)
             processing_time = time.time() - chunk_start_time
             logger.log_step("✅ Analysis complete", f"Total: {processing_time:.2f}s")
             
@@ -1011,23 +871,21 @@ if uploaded_files:
                 "partial_summaries": partial_summaries if show_chunks else []
             }
             
-            # ✅ Merge GPT extracted fields
-            paper_data.update(structured_fields)
-            
             st.session_state.papers_data.append(paper_data)
-
-            # Pre-generate all comparative outputs for session
-            if "literature_survey_output" not in st.session_state:
-                st.session_state.literature_survey_output = generate_literature_survey_with_table(st.session_state.papers_data, depth)
-
-            if "research_paper_output" not in st.session_state:
-                st.session_state.research_paper_output = generate_combined_comparative_summary(st.session_state.papers_data, depth)
-
-            if "narrative_literature_review" not in st.session_state:
-                st.session_state.narrative_literature_review = generate_combined_comparative_summary(st.session_state.papers_data, depth)
-
         
         logger.log_step("🎉 All files processed successfully!")
+        
+        # Final update to real-time display
+        if show_realtime:
+            total_time = logger.get_elapsed_time()
+            with timer_placeholder.container():
+                st.markdown(f"""
+                <div class="timer-display">
+                ✅ COMPLETE: {total_time:.1f}s<br>
+                📄 Files: {len(uploaded_files)}<br>
+                🎯 Success Rate: 100%
+                </div>
+                """, unsafe_allow_html=True)
     
     # Display results if available
     if st.session_state.papers_data:
@@ -1101,6 +959,8 @@ if uploaded_files:
 
                             if pdf_bytes:
                                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                
+                                # Clean filename for download
                                 clean_filename = re.sub(r'[^\w\-_\.]', '_', paper['filename'])
                                 filename = f"{clean_filename}_summary_{timestamp}.pdf"
 
@@ -1110,7 +970,7 @@ if uploaded_files:
                                     file_name=filename,
                                     mime="application/pdf",
                                     key=f"pdf_dl_{i}",
-                                    help="Download summary as PDF"
+                                    help="Download AI-generated summary as PDF"
                                 )
                             else:
                                 st.error("Failed to generate PDF")
@@ -1159,144 +1019,32 @@ if uploaded_files:
                     ])
                     overlap_df = overlap_df.sort_values("Count", ascending=False)
                     st.dataframe(overlap_df, use_container_width=True)
-
-                # Generate literature survey with table
-                st.markdown("#### ✨ Literature Survey Mode")
-                comparison_output_type = st.radio("Generate As:", ["📄 Literature Survey (Table + Summary)", "🧠 Full Research Paper"], index=0)
-
-                if comparison_output_type == "📄 Literature Survey (Table + Summary)":
-                    st.markdown("##### 📋 Literature Survey Output")
-                    with st.expander("📄 View Literature Survey", expanded=True):
-                        st.code(st.session_state.literature_survey_output, language="markdown")                        
-
-                        col1, col2, col3 = st.columns([1, 1, 2])
-                        with col1:
-                            st.download_button("⬇️ TXT", st.session_state.literature_survey_output, "literature_survey.txt", "text/plain")
-                        with col2:
-                            st.download_button("📄 PDF", create_pdf(st.session_state.literature_survey_output, formatted=True), "literature_survey.pdf", "application/pdf")
-                        with col3:
-                            st.button("📋 Copy to Clipboard", key="copy_survey", help="Select text above and press Ctrl+C")
-
-                elif comparison_output_type == "🧠 Full Research Paper":
-                    st.markdown("##### 🧠 Research Paper Output")
-                    with st.expander("📄 View Research Paper", expanded=True):
-                        st.code(st.session_state.research_paper_output, language="markdown")
-
-                        col1, col2, col3 = st.columns([1, 1, 2])
-                        with col1:
-                            st.download_button("⬇️ TXT", st.session_state.research_paper_output, "comparative_research_paper.txt", "text/plain")
-                        with col2:
-                            st.download_button("📄 PDF", create_pdf(st.session_state.research_paper_output, formatted=True), "comparative_research_paper.pdf", "application/pdf")
-                        with col3:
-                            st.button("📋 Copy to Clipboard", key="copy_paper", help="Select text above and press Ctrl+C")
-
-                # Unified Literature Review Generator
-                st.markdown("#### 📚 Unified Literature Review (Synthesized)")
-                st.markdown("##### 📝 Literature Review Output")
-                st.markdown(st.session_state.narrative_literature_review)
-
-                st.download_button(
-                    label="📄 Download Literature Review (TXT)",
-                    data=st.session_state.narrative_literature_review,
-                    file_name="unified_literature_review.txt",
-                    mime="text/plain"
-                )
-
+                
                 # Side-by-side comparison
-                st.markdown("#### 📊 Side-by-Side Comparison")
-                # === Transposed Comparison Table ===
-                from st_aggrid import AgGrid, GridOptionsBuilder
-
-               # ======= Rich Static Comparison Table (11 fields) ========
-                st.markdown("##### 📊 Full Comparative Table (All Core Fields)")
-
-                headers = [
-                    "Title", "Authors", "Year", "Dataset", "Modality", "Methodology",
-                    "Metrics", "Results", "Contributions", "Limitations", "Future Scope"
-                ]
-
-                # Start HTML table
-                html_table = """
-                <style>
-                    table.comparison-table {
-                        width: 100%;
-                        border-collapse: collapse;
-                        margin-bottom: 2rem;
-                        font-size: 0.85rem;
-                        table-layout: fixed;
-                        word-wrap: break-word;
-                    }
-                    table.comparison-table th, table.comparison-table td {
-                        border: 1px solid #444;
-                        padding: 10px;
-                        vertical-align: top;
-                        text-align: left;
-                        background-color: #111;
-                        color: #eee;
-                        font-family: 'Segoe UI', sans-serif;
-                    }
-                    table.comparison-table th {
-                        background-color: #222;
-                        font-weight: 600;
-                        color: #fff;
-                    }
-                    table.comparison-table tr:nth-child(even) {
-                        background-color: #1a1a1a;
-                    }
-                </style>
-
-                <table class='comparison-table'>
-                    <thead>
-                        <tr>""" + "".join(f"<th>{h}</th>" for h in headers) + "</tr></thead><tbody>"
-
-                # Table rows from session data
-                for paper in st.session_state.papers_data:
-                    html_table += "<tr>"
-                    html_table += f"<td>{paper.get('title', 'Untitled')}</td>"
-                    html_table += f"<td>{', '.join(paper.get('authors', [])) or 'Unknown'}</td>"
-                    html_table += f"<td>{paper.get('publication_year', 'n.d.')}</td>"
-                    html_table += f"<td>{paper.get('dataset', 'N/A')}</td>"
-                    html_table += f"<td>{paper.get('modality', 'N/A')}</td>"
-                    html_table += f"<td>{paper.get('methodology', 'N/A')}</td>"
-                    html_table += f"<td>{paper.get('metrics', 'N/A')}</td>"
-                    html_table += f"<td>{paper.get('results', 'N/A')}</td>"
-                    html_table += f"<td>{paper.get('contributions', 'N/A')}</td>"
-                    html_table += f"<td>{paper.get('limitations', 'N/A')}</td>"
-                    html_table += f"<td>{paper.get('future_scope', 'N/A')}</td>"
-                    html_table += "</tr>"
-
-                html_table += "</tbody></table>"
-                st.markdown(html_table, unsafe_allow_html=True)
-
-
-                for i, paper in enumerate(st.session_state.papers_data):
-                    with st.container():
-                        st.markdown(f"""
-                        <div style="
-                            border: 1px solid #444; 
-                            padding: 1rem; 
-                            border-radius: 10px; 
-                            margin-bottom: 1rem;
-                            background-color: #1e1e1e;
-                            transition: 0.3s;
-                        " onmouseover="this.style.backgroundColor='#2b2b2b'" onmouseout="this.style.backgroundColor='#1e1e1e'">
-                        """, unsafe_allow_html=True)
-
-                        st.markdown(f"**📄 Title:** {paper.get('title', 'Untitled')}")
-                        st.markdown(f"**👥 Authors:** {', '.join(paper.get('authors', [])) or 'Unknown'}")
-                        st.markdown(f"**📅 Year:** {paper.get('publication_year', 'N/A')}")
-                        st.markdown(f"**🔑 Keywords:** {', '.join(paper.get('keywords', [])[:5]) or 'N/A'}")
-
-                        findings = paper.get("summary", "")
-                        bullet_points = re.findall(r"[-*•]\s+(.*)", findings)
-                        if not bullet_points:
-                            bullet_points = [s.strip() for s in findings.split(". ") if len(s.strip()) > 10]
-
-                        st.markdown("**✅ Key Findings:**")
-                        for bullet in bullet_points[:5]:
-                            st.markdown(f"- {bullet}")
-
-                        st.markdown("</div>", unsafe_allow_html=True)
+                st.markdown("#### 📋 Side-by-Side Comparison")
+                if len(st.session_state.papers_data) >= 2:
+                    paper1, paper2 = st.selectbox("Select Paper 1", [p['title'] for p in st.session_state.papers_data]), st.selectbox("Select Paper 2", [p['title'] for p in st.session_state.papers_data])
+                    
+                    paper1_data = next(p for p in st.session_state.papers_data if p['title'] == paper1)
+                    paper2_data = next(p for p in st.session_state.papers_data if p['title'] == paper2)
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown(f"**📄 {paper1_data['title']}**")
+                        st.markdown(f"**Authors:** {', '.join(paper1_data['authors']) if paper1_data['authors'] else 'Unknown'}")
+                        st.markdown(f"**Year:** {paper1_data['publication_year'] or 'Unknown'}")
+                        st.markdown(f"**Keywords:** {', '.join(paper1_data['keywords'][:5])}")
+                        st.markdown("**Summary:**")
+                        st.text_area("", paper1_data['summary'][:500] + "...", height=200, key="summary1")
+                    
+                    with col2:
+                        st.markdown(f"**📄 {paper2_data['title']}**")
+                        st.markdown(f"**Authors:** {', '.join(paper2_data['authors']) if paper2_data['authors'] else 'Unknown'}")
+                        st.markdown(f"**Year:** {paper2_data['publication_year'] or 'Unknown'}")
+                        st.markdown(f"**Keywords:** {', '.join(paper2_data['keywords'][:5])}")
+                        st.markdown("**Summary:**")
+                        st.text_area("", paper2_data['summary'][:500] + "...", height=200, key="summary2")
         
         elif display_mode == "Summary Dashboard":
             st.markdown("### 📈 Analysis Dashboard")
@@ -1375,6 +1123,53 @@ if uploaded_files:
             if st.button("🔄 Reprocess All", type="secondary"):
                 st.session_state.papers_data = []
                 st.rerun()
+
+# Advanced chunk analysis (if enabled)
+if show_chunks and st.session_state.get('papers_data'):
+    st.markdown("---")
+    st.markdown("### 🧩 Detailed Chunk Analysis")
+    
+    selected_paper = st.selectbox(
+        "Select paper for chunk analysis:",
+        [p['title'] for p in st.session_state.papers_data if p.get('chunks')]
+    )
+    
+    if selected_paper:
+        paper_data = next(p for p in st.session_state.papers_data if p['title'] == selected_paper)
+        
+        if paper_data.get('chunks'):
+            st.markdown(f"#### Chunks for: {selected_paper}")
+            
+            if chunk_display_mode == "Grid View":
+                chunk_data = []
+                for i, chunk in enumerate(paper_data['chunks']):
+                    chunk_data.append({
+                        "Chunk #": i + 1,
+                        "Tokens": chunk.get('token_count', 'Unknown'),
+                        "Preview": chunk['text'][:100] + "..." if len(chunk['text']) > 100 else chunk['text'],
+                        "Summary": paper_data['partial_summaries'][i][:150] + "..." if i < len(paper_data['partial_summaries']) and len(paper_data['partial_summaries'][i]) > 150 else paper_data['partial_summaries'][i] if i < len(paper_data['partial_summaries']) else "No summary"
+                    })
+                
+                chunk_df = pd.DataFrame(chunk_data)
+                gb = GridOptionsBuilder.from_dataframe(chunk_df)
+                gb.configure_pagination(paginationPageSize=10)
+                gb.configure_default_column(wrapText=True, autoHeight=True)
+                gb.configure_column("Preview", width=200)
+                gb.configure_column("Summary", width=300)
+                grid_options = gb.build()
+                AgGrid(chunk_df, gridOptions=grid_options, theme="streamlit")
+            
+            else:  # Expandable Cards
+                for i, chunk in enumerate(paper_data['chunks']):
+                    with st.expander(f"📄 Chunk {i+1} ({chunk.get('token_count', 'Unknown')} tokens)"):
+                        col1, col2 = st.columns([1, 1])
+                        with col1:
+                            st.markdown("**Original Text:**")
+                            st.text_area("", chunk['text'], height=200, key=f"chunk_text_{i}")
+                        with col2:
+                            st.markdown("**AI Summary:**")
+                            summary = paper_data['partial_summaries'][i] if i < len(paper_data['partial_summaries']) else "No summary available"
+                            st.text_area("", summary, height=200, key=f"chunk_summary_{i}")
 
 # Debug logs section (if enabled)
 if show_logs:

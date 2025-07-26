@@ -27,7 +27,6 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 import threading
 import traceback
 import sys
-import spacy
 import json
 
 # ------------------- Configuration -------------------
@@ -137,7 +136,7 @@ with st.sidebar:
     st.markdown("**🧮 Max Tokens per Chunk**")
     MAX_TOKENS_PER_CHUNK = st.slider(
     "⚠️ Larger chunks take more memory & time", 
-    min_value=256, max_value=4096, step=128, 
+    min_value=256, max_value=2048, step=128, 
     value=1024,
     help="Controls how much text (in tokens) is sent to the model per chunk. Default is 1024."
     )
@@ -242,80 +241,35 @@ class RealTimeLogger:
             add_script_run_ctx(self.update_thread)
             self.update_thread.start()
 
-nlp = spacy.load("en_core_web_sm")
-
-def extract_paper_metadata(file_path: str) -> dict:
+def extract_paper_metadata(text: str) -> dict:
     metadata = {
         "title": "",
         "authors": [],
+        "abstract": "",
         "publication_year": "",
-        "abstract": ""
+        "keywords": [],
     }
 
-    ext = file_path.split(".")[-1].lower()
+    lines = [line.strip() for line in text.split('\n') if line.strip()]
+    first_lines = lines[:50]
 
-    try:
-        if ext == "pdf":
-            # ---- 1. Open PDF and use bounding box to extract title ----
-            doc = fitz.open(file_path)
-            first_page = doc.load_page(0)
-            blocks = first_page.get_text("dict")["blocks"]
+    # --- Title: first line longer than 5 words, no URL
+    for line in first_lines:
+        if 5 <= len(line.split()) <= 20 and not re.search(r'http|www|elsevier|license', line.lower()):
+            metadata["title"] = line.strip()
+            break
 
-            largest_font = 0
-            title_text = ""
-            for block in blocks:
-                for line in block.get("lines", []):
-                    for span in line.get("spans", []):
-                        if span.get("size", 0) > largest_font and len(span.get("text", "")) > 10:
-                            largest_font = span["size"]
-                            title_text = span["text"]
+    # --- Authors: extract names before "Abstract"
+    for line in first_lines:
+        if re.search(r"[A-Z][a-z]+ [A-Z][a-z]+", line) and not re.search(r'abstract|doi|journal|published', line.lower()):
+            candidates = [x.strip() for x in re.split(r",| and ", line)]
+            metadata["authors"] = [c for c in candidates if len(c.split()) <= 4 and any(w[0].isupper() for w in c.split())]
+            break
 
-            metadata["title"] = title_text.strip()
-
-            # ---- 2. Get full text for NER ----
-            full_text = first_page.get_text()
-            doc_spacy = nlp(full_text)
-            authors = list({ent.text.strip() for ent in doc_spacy.ents if ent.label_ == "PERSON"})
-            metadata["authors"] = authors
-
-            # ---- 3. Extract year ----
-            year_match = re.search(r"\b(19|20)\d{2}\b", full_text)
-            if year_match:
-                metadata["publication_year"] = year_match.group(0)
-
-            # ---- 4. Extract abstract (if available) ----
-            abstract_match = re.search(r"(abstract|summary)\s*[:\-]?\s*(.+?)(?=\n[A-Z])", full_text, re.IGNORECASE | re.DOTALL)
-            if abstract_match:
-                metadata["abstract"] = abstract_match.group(2).strip()
-
-        else:
-            # ---- Fallback for DOCX, TXT ----
-            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                text = f.read()
-
-            lines = [line.strip() for line in text.split('\n') if line.strip()]
-            first_lines = lines[:80]
-
-            # Title heuristic
-            for line in first_lines:
-                if 6 <= len(line.split()) <= 20 and not re.search(r"http|doi|license|abstract|introduction", line.lower()):
-                    metadata["title"] = line.strip()
-                    break
-
-            doc_spacy = nlp("\n".join(first_lines))
-            authors = list({ent.text.strip() for ent in doc_spacy.ents if ent.label_ == "PERSON"})
-            metadata["authors"] = authors
-
-            year_match = re.search(r"\b(19|20)\d{2}\b", text)
-            if year_match:
-                metadata["publication_year"] = year_match.group(0)
-
-            abstract_match = re.search(r"(abstract|summary)\s*[:\-]?\s*(.+?)(?=\n[A-Z])", text, re.IGNORECASE | re.DOTALL)
-            if abstract_match:
-                metadata["abstract"] = abstract_match.group(2).strip()
-
-    except Exception as e:
-        print(f"[ERROR] Metadata extraction failed: {e}")
+    # --- Year: First 4-digit number (real year)
+    year_match = re.search(r'\b(19|20)\d{2}\b', "\n".join(first_lines))
+    if year_match:
+        metadata["publication_year"] = year_match.group(0)
 
     return metadata
 
@@ -556,8 +510,7 @@ def extract_structured_fields(summary: str) -> dict:
         "metrics": "",
         "results": "",
         "contributions": "",
-        "limitations": "",
-        "future_scope": ""
+        "limitations": ""
     }
 
     patterns = {
@@ -567,8 +520,7 @@ def extract_structured_fields(summary: str) -> dict:
         "metrics": r"(?:evaluation metrics|metrics used|measured by):?\s*(.*?)(?:\n|$)",
         "results": r"(?:result[s]?|findings):?\s*(.*?)(?:\n|$)",
         "contributions": r"(?:contribution[s]?|novelty):?\s*(.*?)(?:\n|$)",
-        "limitations": r"(?:limitation[s]?|weaknesses):?\s*(.*?)(?:\n|$)",
-        "future_scope": r"(?:future work|future scope|next steps):?\s*(.*?)(?:\n|$)"
+        "limitations": r"(?:limitation[s]?|weaknesses):?\s*(.*?)(?:\n|$)"
     }
 
     for key, pattern in patterns.items():
@@ -622,8 +574,7 @@ Return ONLY a Python dictionary in this format:
   "metrics": "...",
   "results": "...",
   "contributions": "...",
-  "limitations": "...",
-  "future_scope": "..."
+  "limitations": "..."
 }}
 
 Be specific and concise. Avoid vague text like 'this paper' or 'the authors'. If a field is not mentioned, write "N/A".
@@ -648,14 +599,10 @@ SUMMARY:
             extracted_json = match.group(0)
             return json.loads(extracted_json)
         else:
-            return {key: "N/A" for key in [
-                "dataset", "modality", "methodology", "metrics", "results", "contributions", "limitations", "future_scope"
-            ]}
+            return {key: "N/A" for key in ["dataset", "modality", "methodology", "metrics", "results", "contributions", "limitations"]}
     except Exception as e:
         logging.error(f"Field extraction failed: {e}")
-        return {key: "N/A" for key in [
-            "dataset", "modality", "methodology", "metrics", "results", "contributions", "limitations", "future_scope"
-        ]}
+        return {key: "N/A" for key in ["dataset", "modality", "methodology", "metrics", "results", "contributions", "limitations"]}
 
 def generate_literature_survey_with_table(papers_data: List[dict], depth="comprehensive") -> str:
     """Generate a markdown table + unified comparative summary of all papers"""
@@ -1204,70 +1151,6 @@ if uploaded_files:
 
                 # Side-by-side comparison
                 st.markdown("#### 📊 Side-by-Side Comparison")
-                # === Transposed Comparison Table ===
-                from st_aggrid import AgGrid, GridOptionsBuilder
-
-               # ======= Rich Static Comparison Table (11 fields) ========
-                st.markdown("##### 📊 Full Comparative Table (All Core Fields)")
-
-                headers = [
-                    "Title", "Authors", "Year", "Dataset", "Modality", "Methodology",
-                    "Metrics", "Results", "Contributions", "Limitations", "Future Scope"
-                ]
-
-                # Start HTML table
-                html_table = """
-                <style>
-                    table.comparison-table {
-                        width: 100%;
-                        border-collapse: collapse;
-                        margin-bottom: 2rem;
-                        font-size: 0.85rem;
-                        table-layout: fixed;
-                        word-wrap: break-word;
-                    }
-                    table.comparison-table th, table.comparison-table td {
-                        border: 1px solid #444;
-                        padding: 10px;
-                        vertical-align: top;
-                        text-align: left;
-                        background-color: #111;
-                        color: #eee;
-                        font-family: 'Segoe UI', sans-serif;
-                    }
-                    table.comparison-table th {
-                        background-color: #222;
-                        font-weight: 600;
-                        color: #fff;
-                    }
-                    table.comparison-table tr:nth-child(even) {
-                        background-color: #1a1a1a;
-                    }
-                </style>
-
-                <table class='comparison-table'>
-                    <thead>
-                        <tr>""" + "".join(f"<th>{h}</th>" for h in headers) + "</tr></thead><tbody>"
-
-                # Table rows from session data
-                for paper in st.session_state.papers_data:
-                    html_table += "<tr>"
-                    html_table += f"<td>{paper.get('title', 'Untitled')}</td>"
-                    html_table += f"<td>{', '.join(paper.get('authors', [])) or 'Unknown'}</td>"
-                    html_table += f"<td>{paper.get('publication_year', 'n.d.')}</td>"
-                    html_table += f"<td>{paper.get('dataset', 'N/A')}</td>"
-                    html_table += f"<td>{paper.get('modality', 'N/A')}</td>"
-                    html_table += f"<td>{paper.get('methodology', 'N/A')}</td>"
-                    html_table += f"<td>{paper.get('metrics', 'N/A')}</td>"
-                    html_table += f"<td>{paper.get('results', 'N/A')}</td>"
-                    html_table += f"<td>{paper.get('contributions', 'N/A')}</td>"
-                    html_table += f"<td>{paper.get('limitations', 'N/A')}</td>"
-                    html_table += f"<td>{paper.get('future_scope', 'N/A')}</td>"
-                    html_table += "</tr>"
-
-                html_table += "</tbody></table>"
-                st.markdown(html_table, unsafe_allow_html=True)
-
 
                 for i, paper in enumerate(st.session_state.papers_data):
                     with st.container():
