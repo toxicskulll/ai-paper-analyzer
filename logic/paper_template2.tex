@@ -1,0 +1,162 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{graphicx} 
+\usepackage{lscape}  
+\usepackage{array}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{comment}
+\usepackage{xcolor}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\title{Advancements in Brain Tumor Segmentation: A Literature Review with Challenges and Research Gaps}
+
+\makeatletter
+\newcommand{\linebreakand}{%
+  \end{@IEEEauthorhalign}
+  \hfill\mbox{}\par
+  \mbox{}\hfill\begin{@IEEEauthorhalign}
+}
+\makeatother
+
+\makeatother
+\author{\IEEEauthorblockN{Dr. Archana Bhat}
+\IEEEauthorblockA{\textit{Dept. of AIML} \\
+\textit{BMS Institute of Technology and Management}\\
+Bengaluru, India  \\
+archanabhat@bmsit.in}
+\and
+\IEEEauthorblockN{Aadishesh Gopal Padasalgi}
+\IEEEauthorblockA{\textit{Dept. of AIML} \\
+\textit{BMS Institute of Technology and Management}\\
+Bengaluru, India  \\
+aadishesh05@gmail.com}
+\linebreakand
+\IEEEauthorblockN{Aditya B}
+\IEEEauthorblockA{\textit{Dept. of AIML} \\
+\textit{BMS Institute of Technology and Management}\\
+Bengaluru, India  \\
+aditya.b.career@gmail.com}
+\and
+\IEEEauthorblockN{Abhay Prabhakar}
+\IEEEauthorblockA{\textit{Dept. of AIML} \\
+\textit{BMS Institute of Technology and Management}\\
+Bengaluru, India  \\
+abhayprabhakar07@gmail.com}
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+{{ abstract_text }}
+\end{abstract}
+
+\begin{IEEEkeywords}
+Brain Tumor Segmentation, Deep Learning, Medical Imaging, MRI, Artificial Intelligence
+\end{IEEEkeywords}
+
+\section{Introduction}
+{{ introduction_text }}
+
+\section{Background and Imaging Modalities}
+{{ background_text }}
+
+% \subsection{Evaluation Metrics and Benchmarks}
+% The evaluation of  tumor segmentation methods involves using a set of key metrics that measure accuracy, precision and reliability in identifying tumors across diverse datasets, some of the widely recognized evaluation metrics for tumor segmentation are:
+
+% \begin{itemize}
+%     \item \textbf{Dice Similarity Coefficient (DSC):} It evaluates the degree of overlap between the predicted tumor segmentation and the actual tumor, with higher values indicating better accuracy.
+%     \[
+%     \text{DSC} = \frac{2 |A \cap B|}{|A| + |B|}
+%     \]
+%     The Dice Similarity Coefficient is a measure of overlap between two sets\cite{b11}.
+    
+%     \item \textbf{Hausdorff Distance (HD):} Identifies the largest boundary gap between the predicted and the ground truth segmentations, highlighting in capturing the tumor’s edges.
+%     \[
+%     \text{HD}(A, B) = \max \left( \sup_{a \in A} \inf_{b \in B} d(a, b), \sup_{b \in B} \inf_{a \in A} d(a, b) \right)
+%     \]
+%     This equation defines the Hausdorff Distance, a measure of the maximum mismatch between two sets, as described in \cite{b12}.
+    
+%     \item \textbf{Precision and Recall:} Precision shows how accurate the predicted tumor pixels are among all pixels that were predicted as tumor, while the recall measures the proportion of correctly predicted pixels of tumor among all actual tumor pixels.
+    
+%     \item \textbf{Sensitivity and Specificity:} Sensitivity reflects the ability to correctly identify tumor pixels from all actual tumor pixels, and specificity focuses on correctly identifying non-tumor pixels from all the actual non-tumor pixels.
+% \end{itemize}
+% For the evaluation of these methods the survey uses publicly available datasets which provides a solid foundation. The BraTS dataset (Brain Tumor Segmentation Challenge) offers multi-modal MRI data for tumor segmentation. TCIA (The Cancer Imaging Archive) provides diverse imaging datasets, including tumor cases and ISLES focuses on ischemic stroke lesions, which share similarities with brain tumor studies. These reliable datasets paired with consistent evaluation metrics accelerates progress in the field of brain tumor segmentation.
+
+\section{Literature Review}
+{{ literature_review_text }}
+
+% \begin{table*}[ht]
+% \caption{Summary of Key Studies on Brain Tumor Detection}
+% \centering
+% \renewcommand\arraystretch{1}
+% \fontsize{6pt}{7pt}\selectfont
+% \begin{tabular}{|>{\centering\arraybackslash}m{2.5cm}|>{\centering\arraybackslash}m{2cm}|>{\centering\arraybackslash}m{1cm}|>{\centering\arraybackslash}m{2cm}|>{\centering\arraybackslash}m{1.5cm}|>{\centering\arraybackslash}m{2cm}|>{\centering\arraybackslash}m{2cm}|>{\centering\arraybackslash}m{2cm}|}
+% \hline
+% \textbf{Author Details} & \textbf{Dataset Used} & \textbf{Modality} & \textbf{Methodology} & \textbf{Evaluation Metrics} & \textbf{Results} & \textbf{Key Contributions} & \textbf{Limitations} \\ \hline
+% Priya Nandihal et al., 2022\cite{b2} & TCIA & MRI & Multilayer Perceptron classifier (ANN-based) & Recall, Precision, Specificity, Accuracy, F measure & Accuracy: 99.875\% & Utilizes GLRLM and CS-LBP features with an ANN classifier & Data-dependent, memory and computationally intensive \\ \hline
+% Shamim Ahmed et al., 2023\cite{b4} & Brain tumor Classification (MRI) Dataset & MRI & EfficientNetB0 & Accuracy, Precision, Recall, F1-Score, Confusion matrix & Accuracy: 99.84\% & EfficientNetB0 combined with SHAP provides explainable brain tumor classification & Small dataset, relies on single-modality data \\ \hline
+% Nongmeikapam Thoiba Singh et al., 2023\cite{b5} & Brain tumor Classification (MRI) Dataset & MRI & High-pass \& median filter preprocessing, seed-growing segmentation, ML (KNN, SVM, Random Forest, CNN) & Accuracy, Precision, Recall, F1-Score & Precision:98.5\%, Accuracy:98.6\%, F1-Score:99\%, Recall:98.9\% & Developed a CNN-based model for brain tumor classification, outperforming other machine learning methods & Small dataset, manual segmentation for training, no CNN explainability \\ \hline
+% Diponkor Bala et al., 2022\cite{b3} & Public Brain Tumor Dataset & MRI & Deep Neural Network (CNN-based) & Accuracy & Accuracy: 99.95\% & Robust CNN with cross-validation and diverse datasets & Biased datasets, limited generalizability, no real-time use, and overfitting risks \\ \hline
+% Oneza Tehreem Khan and Rajeswari D, 2022\cite{b1} & MRI Brain Tumor Dataset & MRI & Machine Learning and Deep Learning techniques (CNN, SVM, Random Forest) & Accuracy, Efficiency & CNN:Accuracy :91.2\%, Efficiency :92.02\%, Training Accuracy :74.9\%, Random Forest:Training Accuracy :92.8\% & Compares various ML and DL algorithms for brain tumor detection using MRI, discusses preprocessing, segmentation, and classification steps & No specific limitations mentioned, but deep learning algorithms require large datasets and are computationally intensive \\ \hline
+% R. Sangeetha et al., 2023\cite{b7} & MRI Brain Tumor Dataset & MRI & FCNs, 3D U-nets, Deep Learning & Accuracy, Precision, Recall, F1 Score & Approximation graphs of accuracy, precision, recall, F1 score & Introduced automated segmentation framework using FCNs and 3D U-nets for gliomas and meningiomas with spatial context integration & Lack of comparative analysis with existing methods \\ \hline
+% Vikas Kushwaha et al., 2022\cite{b8} & Multiple datasets including ADNI, LIDC-IDRI, REMBRANDT, BraTS 2018 & MRI, CT & CNN, FCM clustering, K-means, SVM, PNN, CNN-DWT-LSTM & Accuracy, AUC & 98.6\% with CNN-DWT-LSTM hybrid approach & Comprehensive review comparing multiple ML techniques, including MV-KBC, PNN, and GA-CNN & Insufficient real-world clinical validation, lack of standardized comparison framework \\ \hline
+% %Bandlamudi Harish et al., 2024 & MRI and CT & MRI, CT & UNet and ResUNet for segmentation, ResNet and Transformers for classification & Accuracy, Precision, Recall, F1-Score, Confusion matrix & Classification: ResNet:96.3\%, Transformers:83.2\%, Segmentation:UNet:99.67\%, ResUNet:99.67\% & Comprehensive brain tumor detection system combining multiple deep learning architectures into a single workflow with a practical frontend application for clinical use & Challenges with model interpretability, high computational requirements, limited dataset generalizability, and privacy concerns related to medical data handling \\ \hline
+% Bandlamudi Harish et al., 2024\cite{b6} & MRI and CT & MRI, CT & UNet and ResUNet for segmentation, ResNet and Transformers for classification & Accuracy, Precision, Recall, F1-Score, Confusion matrix & Classification:
+% ResNet: 96.3\%, Transformers: 83.2\%, Segmentation:
+% UNet: 99.67\%, ResUNet: 99.67\% & Comprehensive brain tumor detection system combining multiple deep learning architectures into a single workflow with a practical frontend application for clinical use & Challenges with model interpretability, high computational requirements, limited dataset generalizability, and privacy concerns related to medical data handling \\ \hline
+% Ali Arafat et al., 2024\cite{b9} & Kaggle brain tumor dataset (segmentation and classification) & MRI & U-Net for segmentation and CNN (VGG-16) for classification & Dice coefficient, F1-score, Jaccard index, Recall, Precision, Accuracy & Segmentation: Dice = 0.94, Classification: Accuracy = 99\% (training/validation) & Developed a framework combining U-Net and VGG-16 for accurate segmentation and classification of brain tumors into glioma, meningioma, pituitary, and no tumor & Relies on Kaggle datasets, lacks real-world clinical validation, and does not address challenges like noisy or incomplete MRI scans \\ \hline
+% Priyangshu Sarkar et al., 2022\cite{b10} & Brain tumor Classification (MRI) dataset & MRI & Feature Extraction using GLCM, Transfer Learning with pre trained models, CNN, SVM, watershed segmentation & Accuracy, Sensitivity, Specificity, Confusion matrix, Training/Validation Loss & Accuracy: 98.5\% & Developed hybrid approach combining GLCM, CNN, and SVM & Limited dataset, high computational complexity. \\ \hline
+
+% \end{tabular}
+% \label{tab:brain_tumor_detection}
+% \end{table*}
+
+\section{Challenges and Research Gaps}
+{{ challenges_text }}
+
+% \section{Emerging Gaps}
+% \subsubsection{Limited Data and Bias} The biggest limitation of any machine learning model in medical imaging, is that there is not enough good, heterogeneous data available for training a predictive model. There is a lack generalization, especially in real-life deployment. For example, almost all models can train on MRI scans for a very narrow subset of detecting tumors in the brain. This reduces its generalization abilities in the new unseen data because of the bias of some over-representation to certain tumor types, and this might also not do so well toward real-time usage. Thus, at critical times such as in patient care, a system such as this has very little pay-off since it badly loses on performance-cost balance.
+
+% \subsubsection{Transparency and Trust} Machine learning models, deep learning-based models, are often referred to as "black boxes". In medical applications, models usually pre-trained in historical data will be applied giving a prediction or classification, say tumor detection. However, such models work with no explicit reasoning for how it arrived at such a decision. This transparency makes it tough for the end-users to understand why that particular diagnosis was recommended by the system. Where the decisions might alter the life of people in a field, there is a requirement for transparency. Without it, stakeholders would not like this technology with full surrender. Such a trust deficit might limit their deployment seriously in real-world settings. If the users do not know the reliability of the system or how it works, they might prefer relying on traditional methods that they are more familiar with.
+
+% \subsubsection{Accuracy and Human Trust} The model is very impressive about what it learned from the big data, but it lacks subtlety from the human expert's information and decision in making, say, a medical imaging decision. Doctors, in that case, would rely on technical data but also years of experience, intuition, and full understanding of the patient's context.". The performance gap makes health care professionals treat the AI tools as supportive aids than as decision makers, though at present AI models are not shown to surpass human doctors consistently in every area, albeit having demonstrated very high accuracy under controlled environments. Therefore, while AI models can be useful to aid in image segmentation or so that an ancillary opinion may be given, it cannot take the entire worth of the human experience in complex cases. Thus, such a gap curtails the full potential AI may be able to contribute towards medicine as, models are thought to be of supplementary use and not a resource that is fundamentally crucial.
+
+
+\section{Future Directions and Discussions}
+{{ future_text }}
+
+\section{Conclusion}
+{{ conclusion_text }}
+
+% \section*{Acknowledgments}
+% We would like to express our most sincere gratitude to our mentors, Dr. Archana Bhat and Dr. Sowmya V L for their guidance and encouragement for this research. Their profound expertise and insightful feedback have been pivotal in shaping the outcome of this work. It has been an honor to learn from their experience. 
+
+%\section*{References}
+
+\begin{thebibliography}{00}
+%\bibitem{b1} Brain Tumor Classification (MRI), Remote source: https://www.kaggle.com/datasets/sartajbhuvaji/brain-tumor-classification-mri
+\bibitem{b1} O. T. Khan and D. Rajeswari, "Brain Tumor detection Using Machine Learning and Deep 
+Learning Approaches," 2022 International Conference on Advances in Computing, Communication and Applied Informatics (ACCAI), Chennai, India, 2022, pp. 1-7, doi: 10.1109/ACCAI53970.2022.9752502.
+\bibitem{b2} P. Nandihal, V. Shetty S, T. Guha and P. K. Pareek, "Glioma Detection using Improved Artificial Neural Network in MRI Images," 2022 IEEE 2nd Mysore Sub Section International Conference (MysuruCon), Mysuru, India, 2022, pp. 1-9, doi: 10.1109/MysuruCon55714.2022.9972712.
+\bibitem{b3} D. Bala, M. A. Islam, M. I. Hossain, M. Mynuddin, M. A. Hossain and M. S. Hossain, "Automated Brain Tumor Classification System using Convolutional Neural Networks from MRI Images," 2022 International Conference on Engineering and Emerging Technologies (ICEET), Kuala Lumpur, Malaysia, 2022, pp. 1-6, doi: 10.1109/ICEET56468.2022.10007116.
+\bibitem{b4}S. Ahmed, S. N. Nobel and O. Ullah, "An Effective Deep CNN Model for Multiclass Brain Tumor Detection Using MRI Images and SHAP Explainability," 2023 International Conference on Electrical, Computer and Communication Engineering (ECCE), Chittagong, Bangladesh, 2023, pp. 1-6, doi: 10.1109/ECCE57851.2023.10101503.
+\bibitem{b5}N. T. Singh, P. Kaur, A. Chaudhary and S. Singla, "Detection of Brain Tumors Through the Application of Deep Learning and Machine Learning Models," 2023 IEEE 8th International Conference for Convergence in Technology (I2CT), Lonavla, India, 2023, pp. 1-6, doi: 10.1109/I2CT57861.2023.10126474.
+\bibitem{b6}B. Harish and E. Jangam, "AI Based Brain Tumor Detection Using Deep Learning," 2024 International Conference on Science Technology Engineering and Management (ICSTEM), Coimbatore, India, 2024, pp. 1-6, doi: 10.1109/ICSTEM61137.2024.10560895.
+\bibitem{b7}R. Sangeetha, P. Vishwakarma, S. Vats, L. Rani and J. Logeshwaran, "Enabling Accurate Brain Tumor Segmentation with Deep Learning" 2023 International Conference on Research Methodologies in Knowledge Management, Artificial Intelligence and Telecommunication Engineering (RMKMATE), Chennai, India, 2023, pp. 1-6, doi: 10.1109/RMKMATE59243.2023.10368836.
+\bibitem{b8}V. Kushwaha and P. Maidamwar, "An Empirical Analysis of Machine Learning Techniques for Brain Tumor Detection," 2022 Second International Conference on Artificial Intelligence and Smart Energy (ICAIS), Coimbatore, India, 2022, pp. 405-410, doi: 10.1109/ICAIS53314.2022.9742868.
+\bibitem{b9}A. Arafat, D. Mamtani and K. R. Jansi, "Brain Tumor MRI Image Segmentation and Classification based on Deep Learning Techniques," 2023 2nd International Conference on Smart Technologies and Systems for Next Generation Computing (ICSTSN), Villupuram, India, 2023, pp. 1-6, doi: 10.1109/ICSTSN57873.2023.10151504.
+\bibitem{b10}P. Sarkar and D. Srivastava, "Computational Intelligence Approach to improve the Classification Accuracy of Brain Tumour Detection," 2022 2nd International Conference on Advance Computing and Innovative Technologies in Engineering (ICACITE), Greater Noida, India, 2022, pp. 406-414, doi: 10.1109/ICACITE53722.2022.9823583.
+\bibitem{b11}Lee R. Dice. Measures of the Amount of Ecologic Association Between Species. Ecology. 1945. Vol. 26(3):297-302. DOI: 10.2307/1932409
+\bibitem{b12}M. . -P. Dubuisson and A. K. Jain, "A modified Hausdorff distance for object matching," Proceedings of 12th International Conference on Pattern Recognition, Jerusalem, Israel, 1994, pp. 566-568 vol.1, doi: 10.1109/ICPR.1994.576361.
+\end{thebibliography}
+\vspace{12pt}
+\color{red}
+
+\end{document}

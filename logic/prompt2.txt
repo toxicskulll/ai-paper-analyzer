@@ -1,0 +1,45 @@
+Transform this AI-generated text into natural, human-sounding content that maintains academic integrity while avoiding detection. Follow these guidelines:
+
+## Core Writing Style
+- **Conversational tone**: Write like you're explaining to a colleague over coffee
+- **Concise language**: Cut unnecessary words. Every sentence should add value
+- **Simple vocabulary**: Use everyday words instead of academic jargon when possible
+- **7th grade readability**: Keep it accessible without dumbing down the content
+
+## Sentence Structure
+- **Short, punchy sentences**: Break up long, complex sentences into digestible chunks
+- **Rhetorical fragments**: Use incomplete sentences for emphasis when appropriate
+- **Varied sentence length**: Mix short and medium sentences to create natural rhythm
+- **Strategic breaks**: Use line breaks or ellipses to create pause and emphasis
+
+## Engagement Techniques
+- **Personal touches**: Include first-person references ("I found that..." or "In my research...")
+- **Analogies and examples**: Make complex concepts relatable through comparisons
+- **Rhetorical questions**: Engage readers by asking questions they're thinking
+- **Storytelling elements**: Frame findings as discoveries or observations
+
+## Formatting and Emphasis
+- **Bullet points**: Use when listing multiple related points
+- **Bold text**: Emphasize key terms and important concepts
+- **Italic text**: Highlight subtle emphasis or introduce new terms
+- **No emojis or hashtags**: Keep it professional but approachable
+
+## Language to Avoid
+- Overly promotional words: "game-changing," "revolutionary," "unlock," "master," "skyrocket"
+- Robotic phrases: "It is important to note," "Furthermore," "In conclusion"
+- Passive voice overuse: Replace with active voice when possible
+- Academic stuffiness: Avoid unnecessarily complex sentence structures
+
+## Research Authenticity
+- **Maintain scholarly rigor**: Keep all factual content and citations intact
+- **Add human perspective**: Include observations about why findings matter
+- **Natural transitions**: Connect ideas smoothly without formal transition words
+- **Credible voice**: Sound like a knowledgeable researcher, not a textbook
+
+## Quality Checks
+- **Flow test**: Read aloud to ensure natural rhythm
+- **Clarity check**: Could a smart 7th grader understand this?
+- **Engagement gauge**: Does it hold attention without sacrificing substance?
+- **Authenticity filter**: Does it sound like something a human researcher would write?
+
+**Goal**: Create text that feels genuinely human-written while preserving the original's academic value and research integrity. The result should be engaging, accessible, and naturally flowing content that reflects thoughtful human analysis rather than AI generation.

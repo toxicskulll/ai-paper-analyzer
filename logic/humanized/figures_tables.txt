@@ -1,0 +1,11 @@
+**Figures and Tables**
+
+This study employs various diagrammatic and tabular presentations to offer comprehensive visual and numerical representations of the methodologies, results, and comparisons delineated within the related work section.
+
+Table 1 presents a comparison of segmentation accuracy for the 3D U-Net against preceding approaches on benchmark datasets ([13]). Figure 1 offers an architectural diagram of the adapted U-net for 3D medical image segmentation, detailing the skip connections between the encoder and decoder layers ([18]).
+
+Additionally, Table 2 showcases the accuracy of the proposed transformer-based network, MedNeXt, for medical image segmentation against existing methods on various datasets ([14]). Figure 2 illustrates the architecture of the MedNeXt network.
+
+In regard to cooling control strategies in a data center, Table 3 compares energy savings achieved by DRL approaches versus conventional cooling control methods, as displayed in Figure 3 ([15]).
+
+These figures and tables contribute significantly to an improved comprehension of each study's contributions, limitations, and potential future directions, thereby facilitating critical analysis and comparison among various methodologies.

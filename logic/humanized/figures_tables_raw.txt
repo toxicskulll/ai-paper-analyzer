@@ -1,0 +1,31 @@
+**Figures and Tables**
+
+This section provides an overview of the key figures and tables included in the study.
+
+**Figure 1: U-Net Architecture**
+
+This figure illustrates the U-Net architecture, a symmetric encoder-decoder model that was utilized in all the studies reviewed. The figure shows the skip connections between the encoding and decoding paths, as well as the max pooling and upsampling operations.
+
+**Table 1: Dataset Characteristics**
+
+This table presents an overview of the dataset characteristics used in each study. It includes information such as the number of cases, modalities, resolution, and the split between training, validation, and testing sets.
+
+**Figure 2-4: Model Performance on BRATS Dataset**
+
+These figures present the performance of the U-Net based deep learning models on the BRATS 2015 dataset. Each figure presents the results for a specific evaluation metric (Mean Intersection over Union, Dice similarity coefficient, and Dice coefficients for HGG, LGG, and combined cases) across different studies. The performance is shown in terms of mean values with associated standard deviations.
+
+**Figure 5: Segmentation Results on a Sample Case**
+
+This figure presents segmentation results on a sample case from the BRATS 2015 dataset. It shows the ground truth segmentation, the prediction made by the U-Net based deep learning model, and the resulting segmentation error.
+
+**Table 2: Comparison of Study Results**
+
+This table compares the results obtained by each study in terms of the evaluation metrics mentioned above. It provides a clear comparison of the performance achieved by each study on the BRATS 2015 dataset.
+
+**Figure 6-8: Challenges in LGG Segmentation**
+
+These figures highlight the challenges encountered when segmenting enhancing tumor regions of LGG cases, as identified by the work by XYZ. They show examples where the model struggles to accurately segment these regions, and suggest potential solutions such as stacking all multimodal MRI channels and performing joint training with HGG datasets.
+
+**Table 3: Future Work Proposals**
+
+This table outlines the proposals for future work, including validating the method on multi-institutional and longitudinal datasets, addressing the challenges in enhancing tumor segmentation of LGG cases, applying the method to an independent testing dataset, expanding the studies to other medical image analysis tasks, and applying novel techniques like transfer learning and multi-task learning.

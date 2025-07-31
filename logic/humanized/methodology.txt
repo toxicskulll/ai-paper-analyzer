@@ -1,0 +1,19 @@
+**METHODODOLOGY**
+
+This section delves into the methodologies utilized in the examined studies, focusing on 3D U-Net and MedNeXt for medical image segmentation and Deep Reinforcement Learning (DRL) for adaptive cooling control in data centers.
+
+1. **3D U-Net**
+   The reviewed study advanced an adapted U-net architecture, incorporating skip connections between encoder and decoder layers to surmount the challenges associated with 3D medical image segmentation. Convolutional Neural Networks (CNNs) were employed for voxel-wise segmentation in a three-dimensional context [13].
+
+2. **MedNeXt**
+   The proposed transformer-based network architecture, MedNeXt, was designed to enhance medical image segmentation tasks by capitalizing on both local and global contextual information [18]. The model was trained and assessed on various medical datasets for accuracy comparisons with existing methods.
+
+3. **Deep Reinforcement Learning (DRL) for Adaptive Cooling Control**
+   In this study, the Deterministic Double Q-learning (DDPG) algorithm was applied to generate adaptive cooling control strategies within data centers [16]. The DDPG-based cooling control strategies were compared with traditional approaches concerning energy consumption and efficiency.
+
+The evaluation of these methodologies encompassed the following stages:
+   - Demonstrating segmentation accuracy improvements through comparisons on benchmark datasets for 3D U-Net and MedNeXt.
+   - Quantifying energy savings attained by DRL-based adaptive cooling control strategies relative to conventional methods.
+   - Analyzing the introduced techniques' key contributions in terms of efficiency, reduced need for manual annotation (for medical image segmentation), and improved sustainability and efficiency in data centers.
+   - Identifying potential limitations such as the necessity for larger datasets and real-world validation for all three studies.
+   - Proposing future research directions to optimize the AI techniques for specific applications within healthcare settings, medical applications, data center management, cloud providers, and scientific research institutions.

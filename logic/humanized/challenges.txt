@@ -1,0 +1,11 @@
+****CHALLENGES IN COMPUTER VISION AND REINFORCEMENT LEARNING**
+
+This section elucidates several challenges associated with the existing works on computer vision and reinforcement learning, emphasizing medical image segmentation and energy efficiency in data centers.
+
+1. **Medical Image Segmentation**
+   The primary challenge lies in the scarcity of datasets for training and validating models, which may lead to suboptimal performance [13]. To mitigate this, it is crucial to validate the performance of these models on a diverse range of datasets to ensure their efficacy in real-life scenarios. Additionally, efforts should be directed towards optimizing the models specifically for healthcare applications to improve accuracy and efficiency.
+
+2. **Energy Efficiency in Data Centers**
+   The optimization and validation of AI techniques, such as Deep Reinforcement Learning (DRL), in practical settings is essential to confirm their effectiveness in large-scale data centers [18]. Furthermore, the DRL approach must be scaled up for larger data centers while preserving its efficiency and sustainability benefits. Lastly, there is a need to explore the applicability of these optimized AI techniques beyond data centers, including cloud providers and scientific research institutions.
+
+Addressing these challenges will enable future studies to enhance the performance of medical image segmentation models and reinforcement learning approaches for energy-efficient data center management, thereby contributing substantially to both healthcare and sustainability.
