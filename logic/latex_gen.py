@@ -254,7 +254,16 @@ class LaTeXGenerator:
         Returns:
             Enhanced render data
         """
-        render_data = {}
+        # Default values for template variables
+        defaults = {
+            'paper_title': 'AI-Generated Research Paper',
+            'author_block': 'AI Paper Analyzer',
+            'keywords': 'artificial intelligence, research, analysis',
+            'acknowledgments': 'This paper was generated using AI Paper Analyzer.',
+            'bibliography_entries': '\\bibitem{ref1} AI Paper Analyzer. (2024). Automated Research Paper Generation.'
+        }
+        
+        render_data = defaults.copy()
         
         for key, value in section_data.items():
             # Handle different value types
@@ -404,7 +413,7 @@ def render_latex(section_data: dict,
     """
     # Extract template directory and filename
     template_path = Path(template_path)
-    template_dir = template_path.parent if template_path.parent != Path('.') else 'templates'
+    template_dir = template_path.parent if template_path.parent != Path('.') else '.'
     template_name = template_path.name
     
     output_path = Path(output_path)

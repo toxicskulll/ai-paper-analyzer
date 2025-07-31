@@ -255,26 +255,33 @@ class PaperGenerator:
             try:
                 self.logger.info(f"Generating {section_name} section (attempt {attempt + retry})")
 
-                result = subprocess.run(
+                # Use Popen for better process control
+                process = subprocess.Popen(
                     ["ollama", "run", self.config.ollama_model],
-                    input=full_prompt.encode("utf-8"),
+                    stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    timeout=self.config.ollama_timeout
+                    text=True
                 )
-
-                if result.returncode == 0:
-                    output = result.stdout.decode("utf-8").strip()
-                    if self._validate_section_output(output, section_name):
-                        self.logger.info(f"Successfully generated {section_name}")
-                        return output
+                
+                try:
+                    output, error = process.communicate(input=full_prompt, timeout=self.config.ollama_timeout)
+                    
+                    if process.returncode == 0:
+                        output = output.strip()
+                        if self._validate_section_output(output, section_name):
+                            self.logger.info(f"Successfully generated {section_name}")
+                            return output
+                        else:
+                            self.logger.warning(f"Generated content for {section_name} failed validation")
                     else:
-                        self.logger.warning(f"Generated content for {section_name} failed validation")
-                else:
-                    self.logger.error(f"Ollama returned non-zero exit code for {section_name}: {result.stderr.decode('utf-8').strip()}")
-
-            except subprocess.TimeoutExpired:
-                self.logger.warning(f"Timeout on {section_name} (attempt {retry + 1})")
+                        self.logger.error(f"Ollama returned non-zero exit code for {section_name}: {error.strip()}")
+                        
+                except subprocess.TimeoutExpired:
+                    self.logger.warning(f"Timeout on {section_name} (attempt {retry + 1})")
+                    process.kill()  # Force kill the hanging process
+                    process.wait()  # Wait for process to terminate
+                    
             except Exception as e:
                 self.logger.error(f"Error generating {section_name}: {e}")
 
@@ -319,18 +326,29 @@ class PaperGenerator:
         combined_prompt = f"{guideline_prompt}\n\nOriginal Text:\n{raw_text}\n\nRewritten Text:"
         
         try:
-            result = subprocess.run(
+            # Use Popen for better process control
+            process = subprocess.Popen(
                 ["ollama", "run", self.config.ollama_model],
-                input=combined_prompt.encode("utf-8"),
+                stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                timeout=self.config.ollama_timeout
+                text=True
             )
             
-            if result.returncode == 0:
-                output = result.stdout.decode("utf-8").strip()
-                if output and len(output) > len(raw_text) * 0.5:  # Ensure reasonable output length
-                    return output
+            try:
+                output, error = process.communicate(input=combined_prompt, timeout=self.config.ollama_timeout)
+                
+                if process.returncode == 0:
+                    output = output.strip()
+                    if output and len(output) > len(raw_text) * 0.5:  # Ensure reasonable output length
+                        return output
+                else:
+                    self.logger.error(f"Ollama error in rewrite: {error.strip()}")
+                    
+            except subprocess.TimeoutExpired:
+                self.logger.warning("Timeout in prompt-based rewriting")
+                process.kill()  # Force kill the hanging process
+                process.wait()  # Wait for process to terminate
                     
         except Exception as e:
             self.logger.error(f"Error in prompt-based rewriting: {e}")

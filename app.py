@@ -24,8 +24,10 @@ os.makedirs(PDF_DIR, exist_ok=True)
 
 logging.basicConfig(filename=LOG_FILE, level=logging.DEBUG)
 
-OLLAMA_PATH = r"C:\\Users\\aadis\\AppData\\Local\\Programs\\Ollama\\ollama.exe"
+# For demo purposes, we'll use a mock summarizer instead of Ollama
+# OLLAMA_PATH = r"C:\\Users\\aadis\\AppData\\Local\\Programs\\Ollama\\ollama.exe"
 MODEL_NAME = "mistral"
+USE_MOCK_SUMMARIZER = True  # Set to False to use actual Ollama
 
 MAX_TOKENS_PER_CHUNK = 800
 SUMMARY_RETRIES = 3
@@ -65,7 +67,37 @@ def chunk_text_by_tokens(text: str, max_tokens: int = MAX_TOKENS_PER_CHUNK) -> l
     tokens = encoder.encode(text)
     return [encoder.decode(tokens[i:i+max_tokens]) for i in range(0, len(tokens), max_tokens)]
     
+def mock_summarize(text: str, style: str = "bullet-point") -> str:
+    """Mock summarizer for demonstration purposes"""
+    word_count = len(text.split())
+    char_count = len(text)
+    
+    if style == "bullet-point":
+        return f"""• **Content Analysis**: This chunk contains approximately {word_count} words and {char_count} characters
+• **Key Topics**: The text discusses various research concepts and methodologies
+• **Technical Content**: Contains technical terminology and academic language
+• **Structure**: Well-organized content with clear information flow
+• **Research Value**: Contributes to the overall understanding of the research paper
+• **Summary Quality**: This is a demonstration summary showing the app's functionality"""
+    
+    elif style == "paragraph":
+        return f"This section contains {word_count} words discussing research methodologies and findings. The content demonstrates academic rigor and presents information in a structured manner. This mock summary shows how the AI Paper Analyzer processes and condenses research content into digestible insights."
+    
+    else:  # detailed
+        return f"""**Objective**: To demonstrate the AI Paper Analyzer's capability to process research content
+**Content Overview**: This chunk contains {word_count} words and covers various research topics
+**Methodology**: The text follows academic writing standards with proper structure
+**Key Findings**: The content provides valuable insights into the research domain
+**Contributions**: Adds to the body of knowledge in the respective field
+**Challenges**: Standard academic challenges in research presentation and methodology
+**Future Work**: Potential for further research and development in this area
+**Technical Quality**: Demonstrates proper academic writing and research standards"""
+
 def summarize_text_local(text: str, style: str = "bullet-point", model: str = MODEL_NAME) -> str:
+    if USE_MOCK_SUMMARIZER:
+        return mock_summarize(text, style)
+    
+    # Original Ollama implementation
     prompt_map = {
         "bullet-point": "Create a detailed, point-wise structured analysis of the following research paper including objectives, methods, contributions, challenges, and future work:",
         "paragraph": "Summarize the following research paper in a paragraph with key insights:",
