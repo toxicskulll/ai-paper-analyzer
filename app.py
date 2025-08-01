@@ -6,8 +6,8 @@ import fitz  # PyMuPDF
 from docx import Document
 from fpdf import FPDF
 import subprocess
-from st_aggrid import AgGrid
-from st_aggrid.grid_options_builder import GridOptionsBuilder
+from streamlit_aggrid import AgGrid
+from streamlit_aggrid.grid_options_builder import GridOptionsBuilder
 import tiktoken  # Tokenizer for chunking
 import re
 import logging
@@ -24,10 +24,15 @@ os.makedirs(PDF_DIR, exist_ok=True)
 
 logging.basicConfig(filename=LOG_FILE, level=logging.DEBUG)
 
-# For demo purposes, we'll use a mock summarizer instead of Ollama
-# OLLAMA_PATH = r"C:\\Users\\aadis\\AppData\\Local\\Programs\\Ollama\\ollama.exe"
+# Configuration for Ollama - these are global variables
+# that can be modified by the UI
+global MODEL_NAME
+global USE_MOCK_SUMMARIZER
+global USE_GPU
+
 MODEL_NAME = "mistral"
 USE_MOCK_SUMMARIZER = True  # Set to False to use actual Ollama
+USE_GPU = None  # None=auto, True=force GPU, False=CPU only
 
 MAX_TOKENS_PER_CHUNK = 800
 SUMMARY_RETRIES = 3
@@ -39,6 +44,26 @@ st.title("📄 AI Research Paper Analyzer")
 
 with st.sidebar:
     depth = st.radio("Summary Style", ["bullet-point", "paragraph", "detailed"], index=0)
+    
+    # Advanced options
+    with st.expander("⚙️ Advanced Options"):
+        
+        # Update based on checkbox
+        USE_MOCK_SUMMARIZER = st.checkbox("Use Mock Summarizer (No LLM)", value=USE_MOCK_SUMMARIZER)
+        
+        if not USE_MOCK_SUMMARIZER:
+            gpu_option = st.radio("GPU Usage", ["Auto", "Force GPU", "CPU Only"], index=0)
+            if gpu_option == "Force GPU":
+                USE_GPU = True
+            elif gpu_option == "CPU Only":
+                USE_GPU = False
+            else:
+                USE_GPU = None
+        
+            model_name = st.text_input("Model Name", value=MODEL_NAME)
+            if model_name and model_name.strip():
+                MODEL_NAME = model_name.strip()
+    
     show_chunks = st.checkbox("🔍 Show individual chunk summaries")
     show_logs = st.checkbox("🛠 Show Debug Logs")
 
@@ -93,29 +118,68 @@ def mock_summarize(text: str, style: str = "bullet-point") -> str:
 **Future Work**: Potential for further research and development in this area
 **Technical Quality**: Demonstrates proper academic writing and research standards"""
 
-def summarize_text_local(text: str, style: str = "bullet-point", model: str = MODEL_NAME) -> str:
+def summarize_text_local(text: str, style: str = "bullet-point", model: str = None) -> str:
+    """
+    Summarize text using either mock summarizer or Ollama with proper UTF-8 encoding and GPU control.
+    
+    Args:
+        text: The text to summarize
+        style: Summary style (bullet-point, paragraph, detailed)
+        model: The Ollama model to use (defaults to global MODEL_NAME)
+    """
+    # Use the global variables
+    global USE_MOCK_SUMMARIZER
+    global MODEL_NAME
+    global USE_GPU
+    
+    # Use the global model name if none provided
+    if model is None:
+        model = MODEL_NAME
+        
     if USE_MOCK_SUMMARIZER:
         return mock_summarize(text, style)
     
-    # Original Ollama implementation
+    # Ollama implementation with UTF-8 encoding and GPU control
     prompt_map = {
         "bullet-point": "Create a detailed, point-wise structured analysis of the following research paper including objectives, methods, contributions, challenges, and future work:",
         "paragraph": "Summarize the following research paper in a paragraph with key insights:",
         "detailed": "Write a comprehensive and structured summary of the following paper, broken into sections like Objective, Contributions, Challenges, Gaps, Future Work:"
     }
     prompt = f"{prompt_map.get(style, prompt_map['bullet-point'])}\n\n{text}"
+    
+    # Base command
+    cmd = ["ollama", "run"]
+    
+    # Add GPU control if specified
+    if USE_GPU is not None:
+        if USE_GPU:
+            cmd.append("--gpu")
+        else:
+            cmd.append("--cpu-only")
+    
+    # Add model name
+    cmd.append(model)
+    
     try:
+        logging.debug(f"Running Ollama with command: {cmd}")
+        logging.debug(f"Prompt length: {len(prompt)} characters")
+        
+        # Use explicit encoding for input and output
         result = subprocess.run(
-            [OLLAMA_PATH, "run", model],
-            input=prompt,
+            cmd,
+            input=prompt.encode('utf-8'),
             capture_output=True,
-            text=True,
             timeout=180
         )
+        
+        # Decode output with error handling
         if result.returncode == 0:
-            return result.stdout.strip()
+            output = result.stdout.decode('utf-8', errors='replace').strip()
+            logging.debug(f"Ollama output length: {len(output)} characters")
+            return output
         else:
-            logging.warning(f"Ollama error: {result.stderr}")
+            error = result.stderr.decode('utf-8', errors='replace')
+            logging.warning(f"Ollama error: {error}")
             return None
     except Exception as e:
         logging.exception(f"Ollama subprocess failed: {e}")

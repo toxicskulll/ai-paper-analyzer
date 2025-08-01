@@ -155,6 +155,9 @@ class Config:
     ollama_timeout: int = 120  # Increased timeout
     max_retries: int = 3
     
+    # GPU Configuration
+    use_gpu: Optional[bool] = None  # None=auto, True=force GPU, False=CPU only
+    
     # File paths
     prompt_file: str = "prompt.txt"
     output_dir: str = "humanized"
@@ -218,14 +221,23 @@ class PaperGenerator:
     def validate_ollama_connection(self) -> bool:
         """Check if Ollama is running and model is available"""
         try:
+            # Log GPU configuration
+            if self.config.use_gpu is not None:
+                self.logger.info(f"GPU configuration: {'Enabled' if self.config.use_gpu else 'Disabled (CPU only)'}")
+            else:
+                self.logger.info("GPU configuration: Auto (system default)")
+                
+            # Use explicit encoding for better UTF-8 handling
             result = subprocess.run(
                 ["ollama", "list"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                timeout=10
+                timeout=10,
+                encoding='utf-8',  # Use encoding parameter instead of manual decoding
+                errors='replace'   # Handle any encoding errors gracefully
             )
             if result.returncode == 0:
-                models = result.stdout.decode("utf-8")
+                models = result.stdout  # Already decoded with encoding parameter
                 if self.config.ollama_model in models:
                     self.logger.info("Ollama connection and model validated")
                     return True
@@ -255,17 +267,38 @@ class PaperGenerator:
             try:
                 self.logger.info(f"Generating {section_name} section (attempt {attempt + retry})")
 
-                # Use Popen for better process control
+                # Base command with GPU control
+                cmd = ["ollama", "run"]
+                
+                # Add GPU control if specified
+                if self.config.use_gpu is not None:
+                    if self.config.use_gpu:
+                        cmd.append("--gpu")
+                    else:
+                        cmd.append("--cpu-only")
+                
+                # Add model name
+                cmd.append(self.config.ollama_model)
+                
+                # Use Popen for better process control with explicit UTF-8 encoding
                 process = subprocess.Popen(
-                    ["ollama", "run", self.config.ollama_model],
+                    cmd,
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    text=True
+                    text=False  # Use binary mode for better encoding control
                 )
                 
                 try:
-                    output, error = process.communicate(input=full_prompt, timeout=self.config.ollama_timeout)
+                    # Encode input and decode output with explicit UTF-8 handling
+                    output_bytes, error_bytes = process.communicate(
+                        input=full_prompt.encode('utf-8'), 
+                        timeout=self.config.ollama_timeout
+                    )
+                    
+                    # Decode with error handling
+                    output = output_bytes.decode('utf-8', errors='replace')
+                    error = error_bytes.decode('utf-8', errors='replace')
                     
                     if process.returncode == 0:
                         output = output.strip()
@@ -326,17 +359,38 @@ class PaperGenerator:
         combined_prompt = f"{guideline_prompt}\n\nOriginal Text:\n{raw_text}\n\nRewritten Text:"
         
         try:
-            # Use Popen for better process control
+            # Base command with GPU control
+            cmd = ["ollama", "run"]
+            
+            # Add GPU control if specified
+            if self.config.use_gpu is not None:
+                if self.config.use_gpu:
+                    cmd.append("--gpu")
+                else:
+                    cmd.append("--cpu-only")
+            
+            # Add model name
+            cmd.append(self.config.ollama_model)
+            
+            # Use Popen for better process control with explicit UTF-8 encoding
             process = subprocess.Popen(
-                ["ollama", "run", self.config.ollama_model],
+                cmd,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True
+                text=False  # Use binary mode for better encoding control
             )
             
             try:
-                output, error = process.communicate(input=combined_prompt, timeout=self.config.ollama_timeout)
+                # Encode input and decode output with explicit UTF-8 handling
+                output_bytes, error_bytes = process.communicate(
+                    input=combined_prompt.encode('utf-8'), 
+                    timeout=self.config.ollama_timeout
+                )
+                
+                # Decode with error handling
+                output = output_bytes.decode('utf-8', errors='replace')
+                error = error_bytes.decode('utf-8', errors='replace')
                 
                 if process.returncode == 0:
                     output = output.strip()

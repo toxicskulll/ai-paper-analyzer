@@ -34,21 +34,52 @@ def extract_text_from_file(filepath):
     else:
         raise ValueError("Unsupported file format.")
 
-def summarize_text_local(text, depth="medium", model="mistral"):
+def summarize_text_local(text, depth="medium", model="mistral", use_gpu=None):
+    """
+    Summarize text using Ollama with proper UTF-8 encoding and optional GPU control.
+    
+    Args:
+        text: The text to summarize
+        depth: Summary depth (short, medium, detailed)
+        model: The Ollama model to use
+        use_gpu: Control GPU usage (None=auto, True=force GPU, False=CPU only)
+    """
     prompt_map = {
         "short": "Summarize the following text in 1-2 lines:",
         "medium": "Summarize the following text in a paragraph:",
         "detailed": "Summarize the following text in detail, covering all important points:"
     }
-    prompt = f"{prompt_map[depth]}\n\n{text}"
+    prompt = f"{prompt_map.get(depth, prompt_map['medium'])}\n\n{text}"
 
+    # Base command
+    cmd = ["ollama", "run"]
+    
+    # Add GPU control if specified
+    if use_gpu is not None:
+        if use_gpu:
+            cmd.append("--gpu")
+        else:
+            cmd.append("--cpu-only")
+    
+    # Add model name
+    cmd.append(model)
+    
     try:
+        # Use explicit encoding for input and output
         result = subprocess.run(
-            ["ollama", "run", model, prompt],
+            cmd,
+            input=prompt.encode('utf-8'),
             capture_output=True,
-            text=True
+            timeout=180
         )
-        return result.stdout.strip()
+        
+        # Decode output with error handling
+        if result.returncode == 0:
+            return result.stdout.decode('utf-8', errors='replace').strip()
+        else:
+            error = result.stderr.decode('utf-8', errors='replace')
+            print(f"Ollama error: {error}")
+            return None
     except Exception as e:
         print(f"Ollama summarization error: {e}")
         return None
