@@ -16,7 +16,7 @@
 % ============================
 % Title
 % ============================
-\title{{{ paper_title }}}
+\title{\VAR{paper_title}}
 
 % ============================
 % Author Block
@@ -29,7 +29,7 @@
 }
 \makeatother
 
-\author{{{ author_block }}}
+\author{\VAR{author_block}}
 
 % ============================
 % Document Begins
@@ -42,75 +42,81 @@
 % Abstract
 % ============================
 \begin{abstract}
-{{ abstract_text }}
+\VAR{abstract}
 \end{abstract}
 
 % ============================
 % Keywords
 % ============================
 \begin{IEEEkeywords}
-{{ keywords }}
+\VAR{keywords}
 \end{IEEEkeywords}
 
 % ============================
 % Introduction
 % ============================
 \section{Introduction}
-{{ introduction_text }}
+\VAR{introduction}
 
 % ============================
 % Background and Related Work
 % ============================
 \section{Background and Related Work}
-{{ background_text }}
+\VAR{background}
+
+% ============================
+% Literature Review
+% ============================
+\section{Literature Review}
+\VAR{literature_review}
 
 % ============================
 % Methodology
 % ============================
 \section{Methodology}
-{{ methodology_text }}
+\VAR{methodology}
 
 % ============================
 % Results and Analysis
 % ============================
 \section{Results and Analysis}
-{{ results_text }}
+\VAR{results}
 
 % ============================
-% Discussion
+% Figures and Tables
 % ============================
-\section{Discussion}
-{{ discussion_text }}
+\section{Figures and Tables}
+\VAR{figures_tables}
 
 % ============================
 % Challenges and Limitations
 % ============================
 \section{Challenges and Limitations}
-{{ challenges_text }}
+\VAR{challenges}
 
 % ============================
 % Future Work
 % ============================
 \section{Future Work}
-{{ future_work_text }}
+\VAR{future}
 
 % ============================
 % Conclusion
 % ============================
 \section{Conclusion}
-{{ conclusion_text }}
+\VAR{conclusion}
 
 % ============================
 % Acknowledgments (Optional)
 % ============================
 \section*{Acknowledgments}
-{{ acknowledgments_text }}
+\VAR{acknowledgments}
 
 % ============================
 % References
 % ============================
 \begin{thebibliography}{00}
-{{ bibliography_entries }}
+\VAR{bibliography_entries}
 \end{thebibliography}
 
 \end{document}

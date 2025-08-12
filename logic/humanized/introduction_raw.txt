@@ -1,11 +1,17 @@
-**Introduction**
+# Introduction
 
-The advent of high-frequency data and advanced computational capabilities has sparked an ongoing quest to refine and improve models used in stock market analysis and prediction. This research aims to contribute to this field by critically examining the existing body of literature on stock market modeling and forecasting, with a specific focus on statistical models, machine learning techniques, and hybrid approaches. By investigating the limitations of these methodologies and proposing potential solutions, this study aspires to provide valuable insights into enhancing the accuracy, generalizability, and applicability of stock market prediction models.
+## Research Context
+The analysis of stock time series data has been a significant area of research in finance, with various studies focusing on modeling and forecasting volatility. The development of efficient models for predicting stock market trends has become increasingly important due to the high stakes involved in investment decisions.
 
-Several papers have addressed the issue of stock market volatility analysis using statistical models such as the GARCH model (e.g., [Paper A]). While these studies have demonstrated promising results in volatile market conditions, they are hampered by limitations like restricted sample sizes and limited generalizability to other markets or regions. To address these shortcomings, future work could explore the applicability of these approaches during crisis periods and investigate their potential impact on diverse stock markets worldwide.
+## Problem Statement
+Despite the availability of various financial time series models, selecting the optimal model for volatility analysis remains challenging. Researchers have proposed different models, including GARCH (Generalized Autoregressive Conditional Heteroskedasticity) models, which are widely used for modeling volatility in financial markets. However, a key challenge is identifying the most effective model that can provide accurate forecasting results.
 
-Similarly, studies employing machine learning techniques, such as support vector machines (SVMs) for volatile stock market prediction (e.g., [Paper C]), have shown promise in volatile market conditions. However, the narrow focus on volatile market conditions and limited sample sizes limit the applicability of these approaches to other market conditions. To expand the scope of machine learning applications in this domain, future research should investigate the potential of these techniques in stable markets and assess their effectiveness in combination with other machine learning methods or statistical models.
+## Objectives
+The current study aims to address this challenge by investigating the performance of different GARCH models and their information criteria in predicting stock market trends. The specific objectives of the study are:
 
-Hybrid approaches that combine statistical models and machine learning techniques have also shown promise for improving stock market prediction accuracy (e.g., [Paper D]). However, like other methodologies, hybrid models face limitations such as restricted sample sizes and limited generalizability to other markets. To address these issues, future research should investigate the applicability of these approaches in diverse market conditions, such as crisis periods, and expand their application to various stock markets worldwide.
+* To evaluate the performance of various GARCH models in forecasting volatility
+* To compare the performance of these models using different information criteria (e.g., AIC, BIC)
+* To identify the optimal model that achieves good forecasting results
 
-In summary, this research aims to build upon existing studies in stock market modeling and forecasting by exploring potential improvements for increased accuracy, generalizability, and applicability. By refining current models, investigating their applicability across different market conditions, developing hybrid models that leverage the strengths of multiple approaches, and comparing results with other prediction methods, this study aspires to contribute valuable insights into the most suitable approach for stock price forecasting during volatile periods.
+## Significance
+The selection of an optimal model for stock time series data has significant implications for investment decisions and risk management. By identifying the most effective GARCH model for volatility analysis, researchers can provide insights into the performance of different models in predicting stock market trends. This knowledge can be used to develop more accurate forecasting systems, which can help investors make informed decisions and reduce risks associated with market fluctuations.

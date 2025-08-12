@@ -29,7 +29,7 @@ import traceback
 import sys
 import spacy
 import json
-from summary_latex import generate_full_latex_from_summary
+from summary_latex import generate_latex_from_research_paper_output
 
 # ------------------- Configuration -------------------
 EXTRACTED_DIR = "extracted_data"
@@ -123,7 +123,7 @@ with st.sidebar:
     processing_mode = st.radio(
         "Processing Mode", 
         ["Single Paper Analysis", "Batch Processing", "Comparative Analysis"], 
-        index=0
+        index=2
     )
     
     # Analysis settings
@@ -139,7 +139,7 @@ with st.sidebar:
     MAX_TOKENS_PER_CHUNK = st.slider(
     "⚠️ Larger chunks take more memory & time", 
     min_value=256, max_value=4096, step=128, 
-    value=1024,
+    value=2816,
     help="Controls how much text (in tokens) is sent to the model per chunk. Default is 1024."
     )
 
@@ -1215,7 +1215,7 @@ if uploaded_files:
                                 else:
                                     paper_metadata = {}
 
-                                latex_path = generate_full_latex_from_summary(summary, paper_metadata)
+                                latex_path = generate_latex_from_research_paper_output(summary, paper_metadata)
                                 with open(latex_path, "r", encoding="utf-8") as f:
                                     latex_content = f.read()
                                 st.download_button(
